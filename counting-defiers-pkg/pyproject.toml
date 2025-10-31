@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "counting-defiers"
+version = "0.0.1"
+description = "Design-based MLE for always taker, complier, defier, never taker counts from Z,D or 2x2 tables."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Your Name", email = "you@example.com" },
+  { name = "Other Name", email = "other@example.com}
+]
+dependencies = [
+  "tqdm>=4.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/yourname/counting-defiers"
+Issues = "https://github.com/yourname/counting-defiers/issues"
+
+[project.scripts]
+counting-defiers = "counting_defiers.cli:main"
