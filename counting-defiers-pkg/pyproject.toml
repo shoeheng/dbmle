@@ -23,3 +23,9 @@ Issues = "https://github.com/yourname/counting-defiers/issues"
 
 [project.scripts]
 counting-defiers = "counting_defiers.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
