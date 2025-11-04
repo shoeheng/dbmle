@@ -74,6 +74,44 @@ Each command supports the following parameters:
   *Default:* `True`
 
 ----------------------------------------------------------------------
+Note on Approximation
+----------------------------------------------------------------------
+
+When `method="approx"`, the package estimates the maximum likelihood estimates (MLEs) using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers.
+
+### Initialization
+
+The approximation algorithm begins by finding the distribution on the edge of the estimated Fréchet set with the highest likelihood.  
+It also considers two simple joint distributions:
+
+- Only always-takers and never-takers  
+- Only compliers and defiers  
+
+These provide plausible starting points for the likelihood search. If either the joint dsitribution with only always and never takers or the joint distribution with only compliers and defiers has the highest likelihood, they are chosen as the MLE.
+Otherwise, the algorithm moves to the local cube search.
+
+### Local Cube Search
+
+Around each starting point, the algorithm searches a small four-dimensional integer cube centered on it, checking all nearby joint distributions that:
+
+- sum exactly to *n*, and  
+- have nonnegative counts.
+
+The cube’s half-width (`delta`) scales moderately with *n*, ensuring the search is both local and fast.  
+Each candidate’s log-likelihood is evaluated, and the algorithm keeps all points within a small numerical tolerance of the best value.
+
+### Edge Expansion
+
+If the best solution lies on the cube’s boundary, the algorithm performs one larger pass with an expanded cube.  
+This step captures nearby high-likelihood points the first pass might miss without having to exhaustively enumerate every possible combination.
+
+### Practical Implications
+
+- The approximate method usually matches the true global MLE for moderate sample sizes while running much faster.  
+- It returns all tied MLEs found within tolerance.  
+- If you need guaranteed global maxima and full credible sets, use `method="exhaustive"` instead.
+
+----------------------------------------------------------------------
 Example Output
 ----------------------------------------------------------------------
 
@@ -144,4 +182,5 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
