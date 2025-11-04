@@ -3,7 +3,7 @@ dbmle
 
 Design-based maximum likelihood estimation (MLE) for identifying the joint distribution of always-takers, compliers, defiers, and never-takers from randomization assignment (Z) and takeup (D) data.
 
-This package provides a design-based framework for estimating latent response type distributions in binary treatment takeup experiments. It supports both aggregated 2×2 count data and individual-level observations.
+This package provides a design-based framework for estimating latent response type distributions in binary treatment takeup experiments. It supports both aggregated 2×2 count data and individual-level observations. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
 
 ----------------------------------------------------------------------
 Installation
@@ -200,6 +200,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
