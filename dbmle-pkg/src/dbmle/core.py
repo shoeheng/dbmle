@@ -1,6 +1,6 @@
-# src/counting_defiers/core.py
+# src/dbmle/core.py
 # ---------------------------------------------------------------------
-# Counting Defiers: MLE + optional supporting stats
+# DBMLE: Design-Based Maximum Likelihood + optional supporting stats
 #
 # inputs (in this order): xI1, xI0, xC1, xC0
 #
@@ -10,7 +10,7 @@
 #
 # auxiliary:
 #   False        -> MLE and (if exhaustive) smallest credible set
-#   True         -> All auxiliary statistics (same as old which_stats="auxiliary")
+#   True         -> All auxiliary statistics
 #
 # Output: two text blocks:
 #   1. "Standard Statistics"
@@ -189,7 +189,7 @@ def _corners_float(
     else:
         # xI1 >= m/2 and xC1 <= c/2
         conj = (L11, U10, U01, L00)
-        opp = (U11, L10, L01, U00)
+        opp = (U11, L10, L01, L00)
 
     return conj, opp
 
@@ -1018,7 +1018,7 @@ def _make_mle_table(
 # =====================================================================
 # result object
 # =====================================================================
-class CountingDefiersResult(dict):
+class DBMLEResult(dict):
     """
     Wrapper around a dict that carries both the structured output
     and a printable report.
@@ -1135,7 +1135,7 @@ def _sanitize_ZD(
             details.append(f"coerced_D={coerced_D}")
         where = f"; first invalid indices: {bad_idxs}" if bad_idxs else ""
         warnings.warn(
-            f"counting_defiers_from_ZD: invalid entries handled by policy='{invalid_policy}' "
+            f"dbmle_from_ZD: invalid entries handled by policy='{invalid_policy}' "
             f"({', '.join(details)}; total={total}, used={used}){where}",
             UserWarning,
             stacklevel=2,
@@ -1165,7 +1165,7 @@ def _sanitize_ZD(
 # =====================================================================
 # main command
 # =====================================================================
-def counting_defiers_command(
+def dbmle(
     xI1: int,
     xI0: int,
     xC1: int,
@@ -1174,7 +1174,7 @@ def counting_defiers_command(
     auxiliary: bool = False,
     level: float = 0.95,
     show_progress: bool = True,
-) -> CountingDefiersResult:
+) -> DBMLEResult:
     """
     Pick method (approx vs exhaustive) and depth of
     statistics (auxiliary = False vs True), and return a structured result
@@ -1277,7 +1277,7 @@ def counting_defiers_command(
         if fre_scs is not None:
             out["frechet_95_scs"] = fre_scs
 
-        return CountingDefiersResult(out)
+        return DBMLEResult(out)
 
     # ================================================================
     # 2) APPROX + NO AUXILIARY (old "proposed")
@@ -1318,7 +1318,7 @@ def counting_defiers_command(
             "largest_possible_support": largest_support,
             "estimated_frechet_bounds": est_frechet,
         }
-        return CountingDefiersResult(out)
+        return DBMLEResult(out)
 
 
     # ================================================================
@@ -1373,10 +1373,10 @@ def counting_defiers_command(
             "report": "\n" + std_tbl + "\n\n" + mle_tbl,
         }
     )
-    return CountingDefiersResult(out)
+    return DBMLEResult(out)
 
 
-def counting_defiers_from_ZD(
+def dbmle_from_ZD(
     Z: List[int],
     D: List[int],
     method: str = "approx",
@@ -1385,7 +1385,7 @@ def counting_defiers_from_ZD(
     show_progress: bool = True,
     invalid_policy: str = "drop",     # "drop" | "coerce-0" | "coerce-1" | "raise"
     warn_on_invalid: bool = True,
-) -> CountingDefiersResult:
+) -> DBMLEResult:
     """
     Takes individual-level data (Z, D) and converts to counts, with robust handling of
     invalid/missing entries.
@@ -1417,13 +1417,13 @@ def counting_defiers_from_ZD(
 
     Returns
     -------
-    CountingDefiersResult
+    DBMLEResult
     """
     xI1, xI0, xC1, xC0, stats = _sanitize_ZD(
         Z, D, invalid_policy=invalid_policy, warn_on_invalid=warn_on_invalid
     )
 
-    result = counting_defiers_command(
+    result = dbmle(
         xI1,
         xI0,
         xC1,
