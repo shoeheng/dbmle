@@ -63,8 +63,9 @@ Each command supports the following parameters:
 
 - **auxiliary**  
   Whether to include auxiliary statistics aside from just the MLE (and creidble sets if `method = "exhaustive"`)  
-  *Default:* `"proposed"`
-
+  *Default:* `False`
+  **Important:** When `auxiliary=True`, the package automatically performs an **exhaustive** grid search to compute the exact MLE and credible sets, even if `method="approx"` was requested since the likelihood of every joint distribution needs to be calculated for the credible set.  
+  
 - **level**  
   Credible-set level (e.g. `0.95` for 95%).  
   *Default:* `0.95`
@@ -72,7 +73,27 @@ Each command supports the following parameters:
 - **show_progress**  
   Whether to display a tqdm progress bar (mainly relevant for exhaustive mode).  
   *Default:* `True`
+  
+### Additional options for `dbmle_from_ZD(...)`
 
+When using the individual-data level command (`Z` assignment, `D` take-up), you also have controls for invalid data handling:
+
+- **`invalid_policy`**  
+  How to handle entries in `Z` or `D` that are not clean binary values (accepted binaries are: `0/1`, `True/False`, `0.0/1.0`, and strings `"0"`/`"1"`).  
+  Choices:  
+  - `"drop"` – ignore any record with an invalid `Z` or `D` (recommended default).  
+  - `"coerce-0"` – coerce invalid values to `0`.  
+  - `"coerce-1"` – coerce invalid values to `1`.  
+  - `"raise"` – strict mode; raise a `ValueError` on the first invalid entry.  
+  *Default:* `"drop"`
+
+- **`warn_on_invalid`**  
+  Emit a single summary warning if any entries were dropped or coerced. The warning reports counts and a few example indices.  
+  *Default:* `True`
+
+**Notes:**  
+- After cleaning (according to `invalid_policy`), both arms must be non-empty (at least one `Z=1` and one `Z=0`), otherwise a `ValueError` is raised.  
+- When `auxiliary=True` in `dbmle_from_ZD(...)`, the same override applies: an exhaustive grid search is run to obtain the exact MLE and credible sets, regardless of `method`.
 ----------------------------------------------------------------------
 Note on Approximation
 ----------------------------------------------------------------------
@@ -176,6 +197,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
