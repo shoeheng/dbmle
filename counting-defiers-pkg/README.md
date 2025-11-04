@@ -77,15 +77,15 @@ Each command supports the following parameters:
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates the maximum likelihood estimates (MLEs) using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, the appoximation is correct. We also randomly sampled experiment results for experiments with sample sizes between 500 and 1000, intervention and control not necessarily equally sizes, and find the approximation is correct for all sampled experiment results.
+When `method="approx"`, the package estimates the maximum likelihood estimates (MLEs) using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, the appoximation is correct. We also randomly sampled 100 different experiment results for experiments with sample sizes between 500 and 1000, intervention and control not necessarily equally sizes, and find the approximation is correct for all sampled experiment results.
 
 ### Initialization
 
-The approximation algorithm begins by finding the distribution on the "corner" of the estimated Fréchet set with the highest likelihood.  
+The approximation algorithm begins by considering three candidate joint distributions. The first is finding the distribution on the "corner" of the estimated Fréchet set with the highest likelihood.  
 It also considers two simple joint distributions:
 
-- Only always-takers and never-takers  
-- Only compliers and defiers  
+- Only always-takers and never-takers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(x_{I1}+x_{C1},0,0,x_{I0}+x_{C0})$
+- Only compliers and defiers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C1},0)$
 
 These provide plausible starting points for the likelihood search. If either the joint dsitribution with only always and never takers or the joint distribution with only compliers and defiers has the highest likelihood, it is chosen as the MLE.
 Otherwise, the algorithm moves to the local cube search.
@@ -97,7 +97,7 @@ Around the "corner" of the estimated Fréchet set with the highest likelihood, t
 - sum exactly to *n*, and  
 - have nonnegative counts.
 
-Empirically, we find that the maximum $\ell_\inf$ distance between the the true MLE and the highest likelihood Fréchet corner increases at a rate just under $O(\sqrt{n})$ (barring MLEs that consist only of always takers and never takers or compliers and defiers). Accordingly, the cube’s half-width (`delta`) scales at the rate $\sqrt{n}$, ensuring the search is both fast and likeliy covers the true MLE.  
+Empirically, we find that the maximum $\ell_\inf$ distance between the the true MLE and the highest likelihood Fréchet corner increases at a rate just around $O(\sqrt{n})$ (barring MLEs that consist only of always takers and never takers or compliers and defiers). Accordingly, the cube’s half-width (`delta`) scales at the rate $0.3n^{0.58}$, a scale emprically decided by fitting a power law relating the maximum $\ell_\inf$ distance to the sample size, ensuring the search is both fast and likeliy covers the true MLE.  
 Each candidate’s log-likelihood is evaluated, and the algorithm keeps all points within a small numerical tolerance of the best value.
 
 ### Edge Expansion
@@ -176,6 +176,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
