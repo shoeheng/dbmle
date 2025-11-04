@@ -1,7 +1,7 @@
 counting-defiers
 ================
 
-Design-based maximum likelihood estimation (MLE) for identifying the joint distribution of always-takers, compliers, defiers, and never-takers from randomized (Z) and takeup (D) data.
+Design-based maximum likelihood estimation (MLE) for identifying the joint distribution of always-takers, compliers, defiers, and never-takers from randomization assignment (Z) and takeup (D) data.
 
 This package provides a design-based framework for estimating latent response type distributions in binary treatment takeup experiments. It supports both aggregated 2×2 count data and individual-level observations.
 
@@ -9,7 +9,7 @@ This package provides a design-based framework for estimating latent response ty
 Installation
 ----------------------------------------------------------------------
 
-Install from source (for local development):
+Install from source:
 
     pip install .
 
@@ -18,8 +18,8 @@ Once the package is published to PyPI, users will be able to install it directly
     pip install counting-defiers
 
 Requirements:
-- Python ≥ 3.9
-- tqdm ≥ 4.0 (used for progress bars and time estimate during exhaustive grid search)
+- Python ≥ 3.9  
+- tqdm ≥ 4.0 (used for progress bars and time estimates during exhaustive grid search)
 
 ----------------------------------------------------------------------
 Quick Start
@@ -27,27 +27,29 @@ Quick Start
 
 From aggregated counts:
 
-    from counting_defiers import counting_defiers_command
+```python
+from counting_defiers import counting_defiers_command
 
-    # Inputs correspond to the observed 2×2 table:
-    # (xI1, xI0, xC1, xC0)
-    res = counting_defiers_command(50, 11, 23, 31, method="approx", which_stats="proposed")
-
-    print(res.report())
+# Inputs correspond to the observed 2×2 table:
+# (xI1, xI0, xC1, xC0)
+res = counting_defiers_command(50, 11, 23, 31, method="approx", auxiliary=False)
+print(res.report())
+```
 
 From individual-level data:
+```python
+from counting_defiers import counting_defiers_from_ZD
 
-    from counting_defiers import counting_defiers_from_ZD
+# Z: randomized assignment indicator (1 = intervention, 0 = control)
+# D: observed take-up indicator (1 = treatment takeup, 0 = did not)
+Z = [1, 1, 0, 1, 0, 1, 0, 0]
+D = [1, 0, 1, 1, 0, 1, 0, 0]
 
-    # Z: randomized assignment indicator (1 = intervention, 0 = control)
-    # D: observed take-up indicator (1 = treatment takeup, 0 = did not)
-    Z = [1, 1, 0, 1, 0, 1, 0, 0]
-    D = [1, 0, 1, 1, 0, 1, 0, 0]
+res = counting_defiers_from_ZD(Z, D, method="exhaustive", auxiliary=True)
+print(res.report())
+```
 
-    res = counting_defiers_from_ZD(Z, D, method="exhaustive", which_stats="auxiliary")
-    print(res.report())
-
-Both commands return a CountingDefiersResult object whose .report() method prints a formatted summary of standard statistics, MLEs, and credible sets.
+Both commands return a CountingDefiersResult object whose .report() method prints a formatted summary of standard statistics, and MLEs. More statistics are reported if `auxiliary = True`.
 
 ----------------------------------------------------------------------
 Options
@@ -59,8 +61,8 @@ Each command supports the following parameters:
   `"approx"` (fast approximation) or `"exhaustive"` (exhaustive grid search).  
   *Default:* `"approx"`
 
-- **which_stats**  
-  `"proposed"` for MLE, or `"auxiliary"` for all supporting intervals and credible sets.  
+- **auxiliary**  
+  Whether to include auxiliary statistics aside from just the MLE (and creidble sets if `method = "exhaustive"`)  
   *Default:* `"proposed"`
 
 - **level**  
@@ -78,6 +80,8 @@ Example Output
 Below is a full example of the output printed by `.report()`:
 
 ```
+Enumerating Joint Distributions: 100%|██████████| 266916/266916 [00:01<00:00, 152926.72Joint Distribution/s]
+
 Standard Statistics
 ----------------------------------------------
 Average Effect              50/61 - 23/54 = 39.37%
@@ -88,8 +92,8 @@ Control Takeup Rate         23/54 = 42.59%
 Sample Size                  115
 
 
-Design-Based Maximum Likelihood Estimates and Auxiliary Statistics
---------------------------------------------------------------------------
+Christy and Kowalski Design-Based Maximum Likelihood Estimates and Auxiliary Statistics
+------------------------------------------------------------------------------------
 Always takers
   MLE: 28/115 = 24.35%
   95% Smallest Credible Set: [0,63]/115 = [0.00%, 54.78%]
@@ -117,13 +121,14 @@ Never takers
   Largest Possible Support: [0,42]/115 = [0.00%, 36.52%]
   Estimated Frechet Bounds: [0,21]/115 = [0.00%, 18.26%]
   95% SCS within Est. Frechet: [0,11]/115 U [13,21]/115 = [0.00%, 9.57%] U [11.30%, 18.26%]
+
 ```
 
 ----------------------------------------------------------------------
 License
 ----------------------------------------------------------------------
 
-This project is licensed under the MIT License — see the LICENSE file for details.
+License information here.
 
 ----------------------------------------------------------------------
 Project Links
