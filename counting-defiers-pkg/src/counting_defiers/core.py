@@ -8,9 +8,9 @@
 #   "approx"     -> fast approximation of MLE
 #   "exhaustive" -> exhaustive grid search
 #
-# which_stats:
-#   "proposed"   -> MLE and smallest credible set if "exhaustive", just MLE if "approx"
-#   "auxiliary"  -> All auxiliary statistics
+# auxiliary:
+#   False        -> MLE and (if exhaustive) smallest credible set
+#   True         -> All auxiliary statistics (same as old which_stats="auxiliary")
 #
 # Output: two text blocks:
 #   1. "Standard Statistics"
@@ -530,7 +530,11 @@ def _exhaustive_grid(
             rem2 = rem1 - t10
             total_upper += (rem2 + 1)
 
-    pbar = tqdm(total=total_upper, desc="Enumerating Joint Distributions", unit="Joint Distribution") if show_progress else None
+    pbar = tqdm(
+        total=total_upper,
+        desc="Enumerating Joint Distributions",
+        unit="Joint Distribution",
+    ) if show_progress else None
 
     thetas: List[Theta] = []
     lls: List[float] = []
@@ -811,7 +815,7 @@ def _make_standard_stats_table(
 def _make_mle_table(
     n: int,
     mle_list: List[Theta],
-    which_stats: str,
+    auxiliary: bool,
     method: str,
     largest_support: Dict[str, Tuple[int, int]],
     global_scs: Optional[Dict[str, List[Tuple[int, int]]]] = None,
@@ -827,12 +831,10 @@ def _make_mle_table(
     else:
         t11 = t10 = t01 = t00 = 0
 
-    if which_stats == "proposed" and method == "approx":
-        title = "Design-Based Maximum Likelihood Estimates"
-    elif which_stats == "proposed":
-        title = "Design-Based Maximum Likelihood Estimates"
+    if not auxiliary:
+        title = "Christy and Kowalski Design-Based Maximum Likelihood Estimates"
     else:
-        title = "Design-Based Maximum Likelihood Estimates and Auxiliary Statistics"
+        title = "Christy and Kowalski Design-Based Maximum Likelihood Estimates and Auxiliary Statistics"
 
     def _get_global_scs_for(key: str) -> Optional[List[Tuple[int, int]]]:
         if global_scs is None:
@@ -900,19 +902,17 @@ def _make_mle_table(
         blk.append(label)
         blk.append(f"  MLE: {mle_count}/{n} = {(mle_count/n)*100:.2f}%")
 
-        # if user asked for the simplest thing and used the fast method,
-        # just stop here
-        if which_stats == "proposed" and method == "approx":
+        # simplest thing and fast method → stop
+        if not auxiliary and method == "approx":
             return blk
 
-        # if user used the exhaustive method but did not ask for auxiliaries,
-        # give at least the global SCS
-        if which_stats == "proposed" and method == "exhaustive":
+        # exhaustive but no auxiliaries → show at least global SCS
+        if not auxiliary and method == "exhaustive":
             if g_scs is not None:
                 blk.append("  95% Smallest Credible Set: " + _fmt_union_same_denom(g_scs, n))
             return blk
 
-        # otherwise (which_stats == "auxiliary"), show everything
+        # auxiliary=True → show everything
         if g_scs is not None:
             blk.append("  95% Smallest Credible Set: " + _fmt_union_same_denom(g_scs, n))
 
@@ -937,7 +937,7 @@ def _make_mle_table(
     lines: List[str] = []
     lines.append("")
     lines.append(title)
-    lines.append("--------------------------------------------------------------------------")
+    lines.append("------------------------------------------------------------------------------------")
 
     lines += _type_block(
         "Always takers",
@@ -1007,13 +1007,13 @@ def counting_defiers_command(
     xC1: int,
     xC0: int,
     method: str = "approx",
-    which_stats: str = "proposed",
+    auxiliary: bool = False,
     level: float = 0.95,
     show_progress: bool = True,
 ) -> CountingDefiersResult:
     """
     Pick method (approx vs exhaustive) and depth of
-    statistics (proposed vs auxiliary), and return a structured result
+    statistics (auxiliary = False vs True), and return a structured result
     plus a printable report string.
     """
     _validate_inputs(xI1, xI0, xC1, xC0)
@@ -1035,7 +1035,7 @@ def counting_defiers_command(
         },
         "meta": {
             "method": method,
-            "which_stats": which_stats,
+            "auxiliary": auxiliary,
             "level": level,
         },
     }
@@ -1051,41 +1051,40 @@ def counting_defiers_command(
         mles = grid["mles"]
         global_ints = grid["intervals"]
 
-        if which_stats == "auxiliary":
+        if auxiliary:
             fre_scs = _frechet_marginal_scs(n, m, xI1, xC1, level=level)
         else:
             fre_scs = None
 
         std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
 
-        # NEW: if there are tied MLEs AND user asked for auxiliary,
+        # NEW: if there are tied MLEs AND user asked for auxiliaries,
         # print one auxiliary block per MLE
-        if which_stats == "auxiliary" and len(mles) > 1:
+        if auxiliary and len(mles) > 1:
             aux_blocks: List[str] = []
             for idx, mle_theta in enumerate(mles, start=1):
                 this_tbl = _make_mle_table(
                     n,
                     [mle_theta],   # force THIS MLE to be first
-                    which_stats,
+                    True,
                     "exhaustive",
                     largest_support,
                     global_scs=global_ints,
                     est_frechet=est_frechet,
                     frechet_scs=fre_scs,
                 )
-                # label so user knows which tied MLE this is
                 aux_blocks.append(f"(tied MLE #{idx})\n{this_tbl}")
             mle_tbl = "\n\n".join(aux_blocks)
         else:
             mle_tbl = _make_mle_table(
                 n,
                 mles,
-                which_stats,
+                auxiliary,
                 "exhaustive",
                 largest_support,
                 global_scs=global_ints,
-                est_frechet=est_frechet if which_stats == "auxiliary" else None,
-                frechet_scs=fre_scs if which_stats == "auxiliary" else None,
+                est_frechet=est_frechet if auxiliary else None,
+                frechet_scs=fre_scs if auxiliary else None,
             )
 
         out.update(
@@ -1099,7 +1098,6 @@ def counting_defiers_command(
                     "intervals": global_ints,
                     "union_str": grid["union_str"],
                 },
-                # keep the same key name; just put a nicer string inside
                 "report": "\n" + std_tbl + "\n\n" + mle_tbl,
             }
         )
@@ -1109,9 +1107,9 @@ def counting_defiers_command(
         return CountingDefiersResult(out)
 
     # ================================================================
-    # 2) APPROX + PROPOSED
+    # 2) APPROX + NO AUXILIARY (old "proposed")
     # ================================================================
-    if method.lower() == "approx" and which_stats == "proposed":
+    if method.lower() == "approx" and not auxiliary:
         mles_fast, ll_fast, meta_fast = fast_mle(
             n, m, xI1, xC1, allow_one_shot_expand=True
         )
@@ -1122,7 +1120,7 @@ def counting_defiers_command(
         mle_tbl = _make_mle_table(
             n,
             mles_fast,
-            "proposed",
+            False,
             "approx",
             largest_support,
         )
@@ -1134,7 +1132,7 @@ def counting_defiers_command(
         return CountingDefiersResult(out)
 
     # ================================================================
-    # 3) APPROX + AUXILIARY (same as EXHUASTIVE + AUXILIARY)
+    # 3) APPROX + AUXILIARY (same behavior as exhaustive + auxiliary)
     # ================================================================
     grid = _exhaustive_grid(n, m, xI1, xC1, level=level, show_progress=show_progress)
     mles_exact = grid["mles"]
@@ -1149,7 +1147,7 @@ def counting_defiers_command(
             this_tbl = _make_mle_table(
                 n,
                 [mle_theta],
-                "auxiliary",
+                True,
                 "approx",         # label: user asked approx
                 largest_support,
                 global_scs=global_ints,
@@ -1162,7 +1160,7 @@ def counting_defiers_command(
         mle_tbl = _make_mle_table(
             n,
             mles_exact,
-            "auxiliary",
+            True,
             "approx",                   # label remains "approx" because user requested it
             largest_support,
             global_scs=global_ints,
@@ -1187,11 +1185,12 @@ def counting_defiers_command(
     )
     return CountingDefiersResult(out)
 
+
 def counting_defiers_from_ZD(
     Z: List[int],
     D: List[int],
     method: str = "approx",
-    which_stats: str = "proposed",
+    auxiliary: bool = False,
     level: float = 0.95,
     show_progress: bool = True,
 ) -> CountingDefiersResult:
@@ -1224,8 +1223,7 @@ def counting_defiers_from_ZD(
         xC1,
         xC0,
         method=method,
-        which_stats=which_stats,
+        auxiliary=auxiliary,
         level=level,
         show_progress=show_progress,
     )
-
