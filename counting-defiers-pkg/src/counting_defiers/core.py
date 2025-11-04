@@ -431,7 +431,7 @@ def fast_mle(
 ) -> Tuple[List[Theta], float, Dict[str, Any]]:
     """
     Start from data-implied Frechet corners and 2 simple joints
-    (AT-NT and C-D), then search a cube around each. If a search hits the
+    (AT-NT and C-D). If best is Frechet, complete a grid search around it. If a search hits the
     edge, we may do one expanded pass.
     """
     if not (0 < m < n) or not (0 <= xI1 <= m) or not (0 <= xC1 <= (n - m)):
@@ -446,15 +446,42 @@ def fast_mle(
     theta_atnt = _atnt_tuple(n, m, xI1, xC1)
     theta_cd = _cd_tuple(n, m, xI1, xC1)
 
+    # Score all initialization candidates
     initial: List[Tuple[Theta, float]] = []
     for t in cands1:
         initial.append((t, _loglik(n, m, xI1, xC1, *t)))
     for t in cands2:
         initial.append((t, _loglik(n, m, xI1, xC1, *t)))
-    initial.append((theta_atnt, _loglik(n, m, xI1, xC1, *theta_atnt)))
-    initial.append((theta_cd, _loglik(n, m, xI1, xC1, *theta_cd)))
+    ll_atnt = _loglik(n, m, xI1, xC1, *theta_atnt)
+    ll_cd   = _loglik(n, m, xI1, xC1, *theta_cd)
+    initial.append((theta_atnt, ll_atnt))
+    initial.append((theta_cd, ll_cd))
 
     init_best = max(ll for _, ll in initial)
+
+    # ---- NEW: Early-exit if a two-type candidate is among the best seeds ----
+    two_type_mles: List[Theta] = []
+    if abs(ll_atnt - init_best) <= tol:
+        two_type_mles.append(theta_atnt)
+    if abs(ll_cd - init_best) <= tol:
+        two_type_mles.append(theta_cd)
+
+    if two_type_mles:
+        # Return immediately without any local cube search
+        return (
+            sorted(set(two_type_mles)),
+            init_best,
+            {
+                "delta_used": 0,                # no local search performed
+                "hit_edge": False,
+                "expanded": False,
+                "skipped_local_search": True,
+                "reason": "two-type seed attains initial maximum",
+            },
+        )
+    # ---- END NEW ----------------------------------------------------------------
+
+    # Otherwise proceed with the usual local cube search
     seeds = sorted({t for (t, ll) in initial if ll >= init_best - tol})
 
     global_best_ll = -math.inf
@@ -498,9 +525,9 @@ def fast_mle(
             "delta_used": delta_base,
             "hit_edge": hit_edge,
             "expanded": expanded,
+            "skipped_local_search": False,
         },
     )
-
 
 # =====================================================================
 # exhaustive grid
