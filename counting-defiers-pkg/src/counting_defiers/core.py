@@ -21,6 +21,7 @@
 # ---------------------------------------------------------------------
 
 import math
+import warnings
 from typing import Dict, Tuple, List, Any, Optional
 from tqdm import tqdm
 
@@ -812,6 +813,7 @@ def _make_standard_stats_table(
     p_fisher = _fisher_exact_2x2(xI1, xI0, xC1, xC0)
 
     lines = []
+    lines.append(" ")
     lines.append("Standard Statistics")
     lines.append("----------------------------------------------")
     lines.append(
@@ -1025,6 +1027,140 @@ class CountingDefiersResult(dict):
         # keep the key name for compatibility
         return self.get("report", repr(self))
 
+# ── helpers: parse a single value to binary 0/1 if possible ─────────────────────
+def _try_parse_binary(v) -> Optional[int]:
+    """
+    Return 0 or 1 if v represents exactly binary {0,1}; otherwise return None.
+    Accepts: bool, int in {0,1}, float in {0.0,1.0}, str in {"0","1"} (with whitespace).
+    """
+    if isinstance(v, bool):
+        return int(v)
+    if isinstance(v, int):
+        return v if v in (0, 1) else None
+    if isinstance(v, float):
+        if not math.isfinite(v):
+            return None
+        return int(v) if v in (0.0, 1.0) else None
+    if isinstance(v, str):
+        s = v.strip()
+        if s in ("0", "1"):
+            return int(s)
+        return None
+    return None  # unsupported type
+
+
+def _sanitize_ZD(
+    Z,
+    D,
+    invalid_policy: str = "drop",
+    warn_on_invalid: bool = True,
+    warn_limit: int = 10,
+) -> Tuple[int, int, int, int, Dict[str, Any]]:
+    """
+    Validate+aggregate (Z, D) to 2x2 counts with flexible invalid handling.
+
+    Returns
+    -------
+    xI1, xI0, xC1, xC0, stats
+
+    stats includes:
+        total, used, dropped, coerced_Z, coerced_D,
+        invalid_indices (up to warn_limit),
+        policy
+    """
+    if Z is None or D is None:
+        raise ValueError("Z and D must be sequences of equal length.")
+    if len(Z) != len(D):
+        raise ValueError(f"Z and D must have the same length (got {len(Z)} vs {len(D)}).")
+    if invalid_policy not in {"drop", "coerce-0", "coerce-1", "raise"}:
+        raise ValueError(
+            "invalid_policy must be one of {'drop','coerce-0','coerce-1','raise'}."
+        )
+
+    default_val = None
+    if invalid_policy == "coerce-0":
+        default_val = 0
+    elif invalid_policy == "coerce-1":
+        default_val = 1
+
+    xI1 = xI0 = xC1 = xC0 = 0
+    total = len(Z)
+    used = 0
+    dropped = 0
+    coerced_Z = 0
+    coerced_D = 0
+    bad_idxs: List[int] = []
+
+    for i, (z_raw, d_raw) in enumerate(zip(Z, D)):
+        z = _try_parse_binary(z_raw)
+        d = _try_parse_binary(d_raw)
+
+        if (z is None) or (d is None):
+            if invalid_policy == "raise":
+                which = []
+                if z is None: which.append(f"Z[{i}]={z_raw!r}")
+                if d is None: which.append(f"D[{i}]={d_raw!r}")
+                raise ValueError(f"Invalid {', '.join(which)}; expected 0/1.")
+            elif invalid_policy == "drop":
+                dropped += 1
+                if len(bad_idxs) < warn_limit:
+                    bad_idxs.append(i)
+                continue
+            else:
+                # coerce to default_val (0 or 1)
+                if z is None:
+                    z = default_val  # type: ignore[assignment]
+                    coerced_Z += 1
+                if d is None:
+                    d = default_val  # type: ignore[assignment]
+                    coerced_D += 1
+
+        # aggregate
+        if z == 1:
+            if d == 1: xI1 += 1
+            else:      xI0 += 1
+        else:
+            if d == 1: xC1 += 1
+            else:      xC0 += 1
+        used += 1
+
+    # Warn once with a concise summary
+    if warn_on_invalid and (dropped > 0 or coerced_Z > 0 or coerced_D > 0):
+        details = []
+        if dropped:
+            details.append(f"dropped={dropped}")
+        if coerced_Z:
+            details.append(f"coerced_Z={coerced_Z}")
+        if coerced_D:
+            details.append(f"coerced_D={coerced_D}")
+        where = f"; first invalid indices: {bad_idxs}" if bad_idxs else ""
+        warnings.warn(
+            f"counting_defiers_from_ZD: invalid entries handled by policy='{invalid_policy}' "
+            f"({', '.join(details)}; total={total}, used={used}){where}",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    # sanity: both arms must be non-empty after handling
+    I = xI1 + xI0
+    C = xC1 + xC0
+    if I == 0 or C == 0:
+        raise ValueError(
+            f"After applying invalid_policy='{invalid_policy}', one arm is empty: I={I}, C={C}. "
+            "Ensure Z (after cleaning) contains at least one 1 and one 0."
+        )
+
+    stats = {
+        "total": total,
+        "used": used,
+        "dropped": dropped,
+        "coerced_Z": coerced_Z,
+        "coerced_D": coerced_D,
+        "invalid_indices": bad_idxs,
+        "policy": invalid_policy,
+    }
+    return xI1, xI0, xC1, xC0, stats
+
 
 # =====================================================================
 # main command
@@ -1237,31 +1373,47 @@ def counting_defiers_from_ZD(
     auxiliary: bool = False,
     level: float = 0.95,
     show_progress: bool = True,
+    invalid_policy: str = "drop",     # "drop" | "coerce-0" | "coerce-1" | "raise"
+    warn_on_invalid: bool = True,
 ) -> CountingDefiersResult:
     """
-    Takes individual-level data (Z,D) instead of
-    aggregated counts (xI1, xI0, xC1, xC0). We just convert to counts and
-    call counting_defiers_command(...).
-    Z should be the randomized assignment indicator (1 = intervention, 0 = control).
-    D should be the observed takeup indicator (1 = takeup, 0 = no takeup).
+    Takes individual-level data (Z, D) and converts to counts, with robust handling of
+    invalid/missing entries.
+
+    Parameters
+    ----------
+    Z : sequence of 0/1 (bool/int/float/str accepted if exactly {0,1})
+        Randomized assignment (1 = intervention, 0 = control).
+    D : sequence of 0/1 (bool/int/float/str accepted if exactly {0,1})
+        Observed take-up (1 = took up treatment, 0 = did not).
+    method : {"approx","exhaustive"}, default "approx"
+    auxiliary : bool, default False
+    level : float, default 0.95
+    show_progress : bool, default True
+    invalid_policy : {"drop","coerce-0","coerce-1","raise"}, default "drop"
+        - "drop": ignore any record with invalid Z or D; warn with counts.
+        - "coerce-0": coerce invalid Z/D values to 0; warn with counts.
+        - "coerce-1": coerce invalid Z/D values to 1; warn with counts.
+        - "raise": strict mode; raise ValueError on the first invalid entry.
+    warn_on_invalid : bool, default True
+        Emit a single summary warning if any invalid entries were dropped/coerced.
+
+    Raises
+    ------
+    ValueError
+        - If Z and D lengths differ.
+        - If invalid_policy is unknown.
+        - If, after cleaning, either arm is empty (no Z==1 or no Z==0).
+
+    Returns
+    -------
+    CountingDefiersResult
     """
-    if len(Z) != len(D):
-        raise ValueError("Z and D must have the same length.")
+    xI1, xI0, xC1, xC0, stats = _sanitize_ZD(
+        Z, D, invalid_policy=invalid_policy, warn_on_invalid=warn_on_invalid
+    )
 
-    xI1 = xI0 = xC1 = xC0 = 0
-    for z, d in zip(Z, D):
-        if z == 1:
-            if d == 1:
-                xI1 += 1
-            else:
-                xI0 += 1
-        else:
-            if d == 1:
-                xC1 += 1
-            else:
-                xC0 += 1
-
-    return counting_defiers_command(
+    result = counting_defiers_command(
         xI1,
         xI0,
         xC1,
@@ -1271,3 +1423,8 @@ def counting_defiers_from_ZD(
         level=level,
         show_progress=show_progress,
     )
+
+    # attach cleaning stats for transparency/debugging
+    meta = result.setdefault("meta", {})
+    meta["from_ZD"] = stats
+    return result
