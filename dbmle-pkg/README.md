@@ -81,7 +81,7 @@ When using the individual-data level command (`Z` assignment, `D` take-up), you 
 - **`invalid_policy`**  
   How to handle entries in `Z` or `D` that are not clean binary values (accepted binaries are: `0/1`, `True/False`, `0.0/1.0`, and strings `"0"`/`"1"`).  
   Choices:  
-  - `"drop"` – ignore any record with an invalid `Z` or `D` (recommended default).  
+  - `"drop"` – ignore any record with an invalid `Z` or `D` (default).  
   - `"coerce-0"` – coerce invalid values to `0`.  
   - `"coerce-1"` – coerce invalid values to `1`.  
   - `"raise"` – strict mode; raise a `ValueError` on the first invalid entry.  
@@ -197,6 +197,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
