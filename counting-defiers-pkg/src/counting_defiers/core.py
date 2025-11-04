@@ -188,7 +188,8 @@ def _corners_float(
     else:
         # xI1 >= m/2 and xC1 <= c/2
         conj = (L11, U10, U01, L00)
-        opp = (U11, L10, L01, L00)
+        opp = (U11, L10, L01, U00)
+
     return conj, opp
 
 
@@ -409,7 +410,7 @@ def _cube_mle(
         for t10 in rng(t10c):
             for t01 in rng(t01c):
                 t00 = n - t11 - t10 - t01
-                if t00 < 0 or (t00c == 0 and t00 != 0):
+                if t00 < 0:
                     continue
                 ll = _loglik(n, m, xI1, xC1, t11, t10, t01, t00)
                 if ll > best_ll + tol:
@@ -1085,23 +1086,22 @@ def counting_defiers_command(
 
         std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
 
-        # NEW: if there are tied MLEs AND user asked for auxiliaries,
-        # print one auxiliary block per MLE
-        if auxiliary and len(mles) > 1:
-            aux_blocks: List[str] = []
+        # If there are tied MLEs, print one block per MLE (even when auxiliary=False)
+        if len(mles) > 1:
+            blocks: List[str] = []
             for idx, mle_theta in enumerate(mles, start=1):
                 this_tbl = _make_mle_table(
                     n,
-                    [mle_theta],   # force THIS MLE to be first
-                    True,
+                    [mle_theta],   # force THIS MLE to be first/only in the table
+                    auxiliary,
                     "exhaustive",
                     largest_support,
-                    global_scs=global_ints,
-                    est_frechet=est_frechet,
-                    frechet_scs=fre_scs,
+                    global_scs=global_ints,                   # show SCS if method=exhaustive
+                    est_frechet=est_frechet if auxiliary else None,
+                    frechet_scs=fre_scs if auxiliary else None,
                 )
-                aux_blocks.append(f"(tied MLE #{idx})\n{this_tbl}")
-            mle_tbl = "\n\n".join(aux_blocks)
+                blocks.append(f"(tied MLE #{idx})\n{this_tbl}")
+            mle_tbl = "\n\n".join(blocks)
         else:
             mle_tbl = _make_mle_table(
                 n,
@@ -1144,19 +1144,36 @@ def counting_defiers_command(
         out["meta"]["fast_mle"] = meta_fast
 
         std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
-        mle_tbl = _make_mle_table(
-            n,
-            mles_fast,
-            False,
-            "approx",
-            largest_support,
-        )
+
+        # If there are tied MLEs, print one block per MLE even without auxiliaries
+        if len(mles_fast) > 1:
+            blocks2: List[str] = []
+            for idx, mle_theta in enumerate(mles_fast, start=1):
+                this_tbl = _make_mle_table(
+                    n,
+                    [mle_theta],   # single MLE per block
+                    False,         # auxiliary=False
+                    "approx",
+                    largest_support,
+                )
+                blocks2.append(f"(tied MLE #{idx})\n{this_tbl}")
+            mle_tbl = "\n\n".join(blocks2)
+        else:
+            mle_tbl = _make_mle_table(
+                n,
+                mles_fast,
+                False,
+                "approx",
+                largest_support,
+            )
+
         out["report"] = "\n" + std_tbl + "\n\n" + mle_tbl
         out["supports"] = {
             "largest_possible_support": largest_support,
             "estimated_frechet_bounds": est_frechet,
         }
         return CountingDefiersResult(out)
+
 
     # ================================================================
     # 3) APPROX + AUXILIARY (same behavior as exhaustive + auxiliary)
