@@ -81,23 +81,23 @@ When `method="approx"`, the package estimates the maximum likelihood estimates (
 
 ### Initialization
 
-The approximation algorithm begins by finding the distribution on the edge of the estimated Fréchet set with the highest likelihood.  
+The approximation algorithm begins by finding the distribution on the "corner" of the estimated Fréchet set with the highest likelihood.  
 It also considers two simple joint distributions:
 
 - Only always-takers and never-takers  
 - Only compliers and defiers  
 
-These provide plausible starting points for the likelihood search. If either the joint dsitribution with only always and never takers or the joint distribution with only compliers and defiers has the highest likelihood, they are chosen as the MLE.
+These provide plausible starting points for the likelihood search. If either the joint dsitribution with only always and never takers or the joint distribution with only compliers and defiers has the highest likelihood, it is chosen as the MLE.
 Otherwise, the algorithm moves to the local cube search.
 
 ### Local Cube Search
 
-Around each starting point, the algorithm searches a small four-dimensional integer cube centered on it, checking all nearby joint distributions that:
+Around the "corner" of the estimated Fréchet set with the highest likelihood, the algorithm searches a small four-dimensional integer cube centered on it, checking all nearby joint distributions that:
 
 - sum exactly to *n*, and  
 - have nonnegative counts.
 
-The cube’s half-width (`delta`) scales moderately with *n*, ensuring the search is both local and fast.  
+Empirically, we find that the maximum $\ell_\inf$ distance between the the true MLE and the highest likelihood Fréchet corner increases at a rate just under $O(\sqrt{n})$ (barring MLEs that consist only of always takers and never takers or compliers and defiers). Accordingly, the cube’s half-width (`delta`) scales at the rate $\sqrt{n}$, ensuring the search is both fast and likeliy covers the true MLE.  
 Each candidate’s log-likelihood is evaluated, and the algorithm keeps all points within a small numerical tolerance of the best value.
 
 ### Edge Expansion
@@ -182,5 +182,6 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
