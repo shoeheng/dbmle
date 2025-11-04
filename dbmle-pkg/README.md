@@ -25,18 +25,21 @@ Requirements:
 Quick Start
 ----------------------------------------------------------------------
 
-From aggregated counts:
+The MLE can be calculated from aggregated counts $(x_{I1},x_{I0},x_{C1},x_{C0})$, which are the counts of subjects who take up in intervnetion $x_{I1}$,
+who do not take up in intervention $x_{I0}$,
+who take up in control $x_{C1}$,
+and who do not take up in control $x_{C0}$:
 
 ```python
 from dbmle import dbmle
 
 # Inputs correspond to the observed 2×2 table:
-# (xI1, xI0, xC1, xC0)
+# (xI1, xI0, xC1, xC0) = (50, 11, 23, 31)
 res = dbmle(50, 11, 23, 31, method="approx", auxiliary=False)
 print(res.report())
 ```
 
-From individual-level data:
+It can also be calculated from the individual-level data:
 ```python
 from dbmle import dbmle_from_ZD
 
@@ -197,6 +200,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
