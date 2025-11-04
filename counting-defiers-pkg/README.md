@@ -77,7 +77,7 @@ Each command supports the following parameters:
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates the maximum likelihood estimates (MLEs) using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers.
+When `method="approx"`, the package estimates the maximum likelihood estimates (MLEs) using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, the appoximation is correct. We also randomly sampled experiment results for experiments with sample sizes between 500 and 1000, intervention and control not necessarily equally sizes, and find the approximation is correct for all sampled experiment results.
 
 ### Initialization
 
@@ -104,12 +104,6 @@ Each candidate’s log-likelihood is evaluated, and the algorithm keeps all poin
 
 If the best solution lies on the cube’s boundary, the algorithm performs one larger pass with an expanded cube.  
 This step captures nearby high-likelihood points the first pass might miss without having to exhaustively enumerate every possible combination.
-
-### Practical Implications
-
-- The approximate method usually matches the true global MLE for moderate sample sizes while running much faster.  
-- It returns all tied MLEs found within tolerance.  
-- If you need guaranteed global maxima and full credible sets, use `method="exhaustive"` instead.
 
 ----------------------------------------------------------------------
 Example Output
@@ -182,6 +176,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
