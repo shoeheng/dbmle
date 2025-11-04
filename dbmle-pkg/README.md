@@ -15,7 +15,7 @@ Install from source:
 
 Once the package is published to PyPI, users will be able to install it directly with:
 
-    pip install counting-defiers
+    pip install dbmle
 
 Requirements:
 - Python ≥ 3.9  
@@ -28,28 +28,28 @@ Quick Start
 From aggregated counts:
 
 ```python
-from counting_defiers import counting_defiers_command
+from dbmle import dbmle
 
 # Inputs correspond to the observed 2×2 table:
 # (xI1, xI0, xC1, xC0)
-res = counting_defiers_command(50, 11, 23, 31, method="approx", auxiliary=False)
+res = dbmle(50, 11, 23, 31, method="approx", auxiliary=False)
 print(res.report())
 ```
 
 From individual-level data:
 ```python
-from counting_defiers import counting_defiers_from_ZD
+from dbmle import dbmle_from_ZD
 
 # Z: randomized assignment indicator (1 = intervention, 0 = control)
 # D: observed take-up indicator (1 = treatment takeup, 0 = did not)
 Z = [1, 1, 0, 1, 0, 1, 0, 0]
 D = [1, 0, 1, 1, 0, 1, 0, 0]
 
-res = counting_defiers_from_ZD(Z, D, method="exhaustive", auxiliary=True)
+res = dbmle_from_ZD(Z, D, method="exhaustive", auxiliary=True)
 print(res.report())
 ```
 
-Both commands return a CountingDefiersResult object whose .report() method prints a formatted summary of standard statistics, and MLEs. More statistics are reported if `auxiliary = True`.
+Both commands return a DBMLEResult object whose .report() method prints a formatted summary of standard statistics, and MLEs. More statistics are reported if `auxiliary = True`.
 
 ----------------------------------------------------------------------
 Options
@@ -166,8 +166,8 @@ License information here.
 Project Links
 ----------------------------------------------------------------------
 
-Homepage: https://github.com/YOURNAME/counting-defiers  
-Issues: https://github.com/YOURNAME/counting-defiers/issues
+Homepage: https://github.com/YOURNAME/dbmle  
+Issues: https://github.com/YOURNAME/dbmle/issues
 
 ----------------------------------------------------------------------
 Citation
@@ -176,6 +176,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
