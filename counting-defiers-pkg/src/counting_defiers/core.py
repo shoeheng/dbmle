@@ -1204,6 +1204,16 @@ def counting_defiers_command(
         },
     }
 
+    # Warning when approx + auxiliary=True
+    if method.lower() == "approx" and auxiliary:
+        warnings.warn(
+            "Note: When 'auxiliary=True' is specified with method='approx', "
+            "the function automatically performs an exhaustive grid search to "
+            "compute the true MLE and 95% credible set. The MLE is exact as well.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     largest_support = _largest_possible_support(n, m, xI1, xC1)
     est_frechet = _estimated_frechet_bounds_discrete(n, m, xI1, xC1)
 
