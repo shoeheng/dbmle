@@ -189,7 +189,7 @@ def _corners_float(
     else:
         # xI1 >= m/2 and xC1 <= c/2
         conj = (L11, U10, U01, L00)
-        opp = (U11, L10, L01, L00)
+        opp = (U11, L10, L01, U00)
 
     return conj, opp
 
@@ -227,7 +227,7 @@ def _best_frechet_corner_point(
 
     scored = [(t, _loglik(n, m, xI1, xC1, *t)) for t in cands]
     best_ll = max(ll for _, ll in scored)
-    bests = [t for t, ll in scored if abs(ll - best_ll) <= 1e-12]
+    bests = [t for t, ll in scored if abs(ll - best_ll) <= 1e-20]
     # deterministic tie-breaking
     return sorted(bests)[0]
 
@@ -428,7 +428,7 @@ def fast_mle(
     xI1: int,
     xC1: int,
     delta: Optional[int] = None,
-    tol: float = 1e-9,
+    tol: float = 1e-20,
     allow_one_shot_expand: bool = True,
 ) -> Tuple[List[Theta], float, Dict[str, Any]]:
     """
@@ -616,7 +616,7 @@ def _exhaustive_grid(
         }
 
     max_ll = max(lls)
-    tol = 1e-9
+    tol = 1e-20
     mles = [thetas[i] for i, ll in enumerate(lls) if abs(ll - max_ll) <= tol]
 
     # posterior weights over the feasible theta's
@@ -777,7 +777,7 @@ def _fisher_exact_2x2(xI1: int, xI0: int, xC1: int, xC0: int) -> float:
     p_val = 0.0
     for aa in range(lo, hi + 1):
         p = hypergeom_prob(aa)
-        if p <= p_obs + 1e-12:
+        if p <= p_obs + 1e-20:
             p_val += p
     return min(p_val, 1.0)
 
