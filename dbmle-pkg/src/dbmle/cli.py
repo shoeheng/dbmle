@@ -1,23 +1,26 @@
 # src/counting_defiers/cli.py
 
 import argparse
-from .core import counting_defiers_command
 
+# Import the new API from dbmle, not the old core
+from dbmle.core import dbmle
 
 def main():
     parser = argparse.ArgumentParser(
         description=(
             "Design-based MLE for always-takers, compliers, defiers, and never-takers "
-            "from randomized encouragement (Z,D) data."
+            "from 2x2 counts (xI1, xI0, xC1, xC0). "
+            "For Z/D individual-level input, call dbmle_from_ZD in Python."
         )
     )
 
-    # Define arguments
+    # Required 2x2 counts
     parser.add_argument("--xI1", type=int, required=True, help="Intervention: took up treatment")
     parser.add_argument("--xI0", type=int, required=True, help="Intervention: did not take up")
     parser.add_argument("--xC1", type=int, required=True, help="Control: took up treatment")
     parser.add_argument("--xC0", type=int, required=True, help="Control: did not take up")
 
+    # Method (fast vs exact)
     parser.add_argument(
         "--method",
         choices=["approx", "exhaustive"],
@@ -25,11 +28,20 @@ def main():
         help="MLE method: fast ('approx') or exact grid search ('exhaustive').",
     )
 
+    # Preferred new switch
+    parser.add_argument(
+        "--auxiliary",
+        action="store_true",
+        help="If set, print auxiliary statistics (credible sets, bounds).",
+    )
+
+    # Back-compat: accept old --which-stats and map it to auxiliary
     parser.add_argument(
         "--which-stats",
         choices=["proposed", "auxiliary"],
-        default="proposed",
-        help="Level of detail: 'proposed' (MLE only) or 'auxiliary' (full credible sets).",
+        default=None,
+        help="(Deprecated) Use --auxiliary instead. "
+             "'proposed' ≈ MLE only; 'auxiliary' adds credible sets/bounds.",
     )
 
     parser.add_argument(
@@ -47,19 +59,25 @@ def main():
 
     args = parser.parse_args()
 
+    # Resolve auxiliary setting with backward compatibility
+    auxiliary = args.auxiliary
+    if args.which_stats is not None:
+        # 'proposed' == no auxiliary stats; 'auxiliary' == show auxiliary stats
+        auxiliary = (args.which_stats == "auxiliary")
+
     # Run the estimator
-    res = counting_defiers_command(
+    res = dbmle(
         args.xI1,
         args.xI0,
         args.xC1,
         args.xC0,
         method=args.method,
-        which_stats=args.which_stats,
+        auxiliary=auxiliary,
         level=args.level,
         show_progress=not args.no_progress,
     )
 
-    # Print the report 
+    # Print the human-readable report
     print(res.report())
 
 
