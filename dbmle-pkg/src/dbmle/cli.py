@@ -1,4 +1,4 @@
-# src/counting_defiers/cli.py
+# src/dbmle/cli.py
 
 import argparse
 
@@ -83,3 +83,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
