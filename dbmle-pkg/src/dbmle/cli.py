@@ -2,8 +2,9 @@
 
 import argparse
 
-# Import the new API from dbmle, not the old core
+# Import the public API
 from dbmle.core import dbmle
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -28,22 +29,14 @@ def main():
         help="MLE method: fast ('approx') or exact grid search ('exhaustive').",
     )
 
-    # Preferred new switch
+    # Auxiliary stats toggle (flag only; do NOT pass True/False after it)
     parser.add_argument(
         "--auxiliary",
         action="store_true",
-        help="If set, print auxiliary statistics (credible sets, bounds).",
+        help="If set, include auxiliary statistics (credible sets, bounds).",
     )
 
-    # Back-compat: accept old --which-stats and map it to auxiliary
-    parser.add_argument(
-        "--which-stats",
-        choices=["proposed", "auxiliary"],
-        default=None,
-        help="(Deprecated) Use --auxiliary instead. "
-             "'proposed' ≈ MLE only; 'auxiliary' adds credible sets/bounds.",
-    )
-
+    # Credible set level
     parser.add_argument(
         "--level",
         type=float,
@@ -51,6 +44,7 @@ def main():
         help="Credible set confidence level (default: 0.95).",
     )
 
+    # Progress bar toggle
     parser.add_argument(
         "--no-progress",
         action="store_true",
@@ -59,12 +53,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Resolve auxiliary setting with backward compatibility
-    auxiliary = args.auxiliary
-    if args.which_stats is not None:
-        # 'proposed' == no auxiliary stats; 'auxiliary' == show auxiliary stats
-        auxiliary = (args.which_stats == "auxiliary")
-
     # Run the estimator
     res = dbmle(
         args.xI1,
@@ -72,7 +60,7 @@ def main():
         args.xC1,
         args.xC0,
         method=args.method,
-        auxiliary=auxiliary,
+        auxiliary=args.auxiliary,
         level=args.level,
         show_progress=not args.no_progress,
     )
@@ -83,4 +71,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
