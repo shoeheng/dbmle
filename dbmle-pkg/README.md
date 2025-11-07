@@ -81,7 +81,9 @@ Both commands return a DBMLEResult object whose .report() method prints a format
 
 Once installed, you can also use dbmle directly in the command line. The first example Python code above would equivalently be
 
-    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary True
+    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary 
+
+To set `auxiliary=False`, simply remove `--auxiliary` from the command line.
 
 ### 3. Using `dbmle` in Stata
 
@@ -102,7 +104,7 @@ and reopen Stata.
 
 Alternatively, you can run shell command inside Stata using `!`. After `dbmle` is installed, you can run
 
-    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary True
+    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary 
 
 teo get the same result.
 
@@ -188,6 +190,8 @@ Example Output
 Below is a full example of the output printed by `.report()`, resulting from the first example Python script:
 
 ```
+UserWarning: Note: When 'auxiliary=True' is specified with method='approx', the function automatically performs an exhaustive grid search to compute the true MLE and 95% credible set. The MLE is exact as well.
+  res = dbmle(
 Enumerating Joint Distributions: 100%|██████████| 266916/266916 [00:01<00:00, 152926.72Joint Distribution/s]
 
 Standard Statistics
@@ -242,8 +246,8 @@ License information here.
 Project Links
 ----------------------------------------------------------------------
 
-Homepage: https://github.com/YOURNAME/dbmle  
-Issues: https://github.com/YOURNAME/dbmle/issues
+Homepage: https://github.com/shoeheng/dbmle  
+Issues: https://github.com/shoeheng/dbmle/issues
 
 ----------------------------------------------------------------------
 Citation
@@ -252,6 +256,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
