@@ -58,7 +58,7 @@ from dbmle import dbmle
 
 # Inputs correspond to the observed 2×2 table:
 # (xI1, xI0, xC1, xC0) = (50, 11, 23, 31)
-res = dbmle(50, 11, 23, 31, method="approx", auxiliary=False)
+res = dbmle(50, 11, 23, 31, method="approx", auxiliary=True)
 print(res.report())
 ```
 
@@ -81,9 +81,31 @@ Both commands return a DBMLEResult object whose .report() method prints a format
 
 Once installed, you can also use dbmle directly in the command line. The first example Python code above would equivalently be
 
-    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary False
+    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary True
 
 ### 3. Using `dbmle` in Stata
+
+Stata now supports calling Python directly, meaning one need not leave Stata. After installing `dbmle`, one can run 
+
+    set pythong_exec /usr/bin/python3
+    python:
+        from dbmle import dbmle
+        res = dbmle(50, 11, 23, 31, method="approx", auxiliary=True)
+        print(res.report())
+    end
+
+Note that if Stata says "restart required", run:
+
+    exit, clear
+
+and reopen Stata.
+
+Alternatively, you can run shell command inside Stata using `!`. After `dbmle` is installed, you can run
+
+    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary True
+
+teo get the same result.
+
 ----------------------------------------------------------------------
 Options
 ----------------------------------------------------------------------
@@ -163,7 +185,7 @@ This step captures nearby high-likelihood points the first pass might miss witho
 Example Output
 ----------------------------------------------------------------------
 
-Below is a full example of the output printed by `.report()`:
+Below is a full example of the output printed by `.report()`, resulting from the first example Python script:
 
 ```
 Enumerating Joint Distributions: 100%|██████████| 266916/266916 [00:01<00:00, 152926.72Joint Distribution/s]
@@ -230,6 +252,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
