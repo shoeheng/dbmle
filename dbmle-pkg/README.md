@@ -3,32 +3,55 @@ dbmle
 
 Design-based maximum likelihood estimation (MLE) for identifying the joint distribution of always-takers, compliers, defiers, and never-takers from randomization assignment (Z) and takeup (D) data.
 
-This package provides a design-based framework for estimating latent response type distributions in binary treatment takeup experiments. It supports both aggregated 2×2 count data and individual-level observations. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
+This package provides a design-based framework for estimating latent response type distributions in experiments with binary assignment and takeup. It supports both aggregated 2×2 count data and individual-level observations. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
 
 ----------------------------------------------------------------------
 Installation
 ----------------------------------------------------------------------
 
-Install from source:
+### Option 1 - Install directly from Github (recommended)
 
-    pip install .
+Open a terminal (or Command Prompt on Windows) and run:
 
-Once the package is published to PyPI, users will be able to install it directly with:
+    pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
-    pip install dbmle
+This installs the package and the command-line tool `dbmle`.
+
+### Option 2 - Install from source
+
+Open a terminal (or Command Prompt on Windows) and run:
+
+    git clone https://github.com/shoeheng/dbmle.git
+    cd dbmle/dbmle-pkg
+    pip install.
 
 Requirements:
 - Python ≥ 3.9  
-- tqdm ≥ 4.0 (used for progress bars and time estimates during exhaustive grid search)
+- `pip` installed (usually included with Python)
 
+To check your Python version, run:
+
+    python --version
+    
+or on some systems:
+
+    python3 --version
+
+If `pip` is not recognized, try:
+
+    python -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 ----------------------------------------------------------------------
-Quick Start
+Usage
 ----------------------------------------------------------------------
 
-The MLE can be calculated from aggregated counts $(x_{I1},x_{I0},x_{C1},x_{C0})$, which are the counts of subjects who take up in intervnetion $x_{I1}$,
+The MLE can be calculated from aggregated counts $(x_{I1},x_{I0},x_{C1},x_{C0})$, which are the counts of subjects who take up in intervention $x_{I1}$,
 who do not take up in intervention $x_{I0}$,
 who take up in control $x_{C1}$,
-and who do not take up in control $x_{C0}$:
+and who do not take up in control $x_{C0}$.
+
+### 1. Python 
+
+A sample script in Python using `dbmle` with aggregate counts looks as follows:
 
 ```python
 from dbmle import dbmle
@@ -39,7 +62,7 @@ res = dbmle(50, 11, 23, 31, method="approx", auxiliary=False)
 print(res.report())
 ```
 
-It can also be calculated from the individual-level data:
+It can also be calculated from the individual-level data using the `dbmle_from_ZD` command:
 ```python
 from dbmle import dbmle_from_ZD
 
@@ -54,6 +77,13 @@ print(res.report())
 
 Both commands return a DBMLEResult object whose .report() method prints a formatted summary of standard statistics, and MLEs. More statistics are reported if `auxiliary = True`.
 
+### 2. Command Line Usage
+
+Once installed, you can also use dbmle directly in the command line. The first example Python code above would equivalently be
+
+    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary False
+
+### 3. Using `dbmle` in Stata
 ----------------------------------------------------------------------
 Options
 ----------------------------------------------------------------------
@@ -200,6 +230,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
