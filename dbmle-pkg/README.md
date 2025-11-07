@@ -89,7 +89,7 @@ To set `auxiliary=False`, simply remove `--auxiliary` from the command line.
 
 Stata now supports calling Python directly, meaning one need not leave Stata. After installing `dbmle`, one can run 
 
-    set pythong_exec /usr/bin/python3
+    set python_exec /usr/bin/python3
     python:
         from dbmle import dbmle
         res = dbmle(50, 11, 23, 31, method="approx", auxiliary=True)
@@ -256,6 +256,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
