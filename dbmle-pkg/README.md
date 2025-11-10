@@ -11,7 +11,7 @@ Installation
 
 ### Option 1 - Install directly from Github (recommended)
 
-Open a terminal (or Command Prompt on Windows) and run:
+Open a terminal (or Command Prompt on Windows), navigate to your proejct directory, and run:
 
     python3 -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
@@ -249,6 +249,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
