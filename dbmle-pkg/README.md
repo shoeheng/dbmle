@@ -29,10 +29,6 @@ Requirements:
 - Python ≥ 3.9  
 - `pip` installed (usually included with Python)
 
-To check your Python version, run:
-
-    python3 --version
-    
 ----------------------------------------------------------------------
 Usage
 ----------------------------------------------------------------------
@@ -249,6 +245,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
