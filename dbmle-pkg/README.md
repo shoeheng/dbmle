@@ -15,6 +15,10 @@ Open a terminal (or Command Prompt on Windows), navigate to your proejct directo
 
     python3 -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
+Or on some systems: 
+
+    -m pip install "git+https://github.com/shoeheng/dbmle.git@main#egg=dbmle&subdirectory=dbmle-pkg"
+
 This installs the package and the command-line tool `dbmle`.
 
 ### Option 2 - Install from source
@@ -78,12 +82,16 @@ To set `auxiliary=False`, simply remove `--auxiliary` from the command line.
 
 Stata now supports calling Python directly, meaning one need not leave Stata. After installing `dbmle`, one can run 
 
-    set python_exec /usr/bin/python3
-    python:
-        from dbmle import dbmle
-        res = dbmle(50, 11, 23, 31, method="approx", auxiliary=True)
-        print(res.report())
-    end
+    python set exec "PATH\TO\PYTHON\python.exe"
+
+to set your Python path in Stata. Once your path is set, run
+```stata
+python:
+from dbmle import dbmle
+res = dbmle(2, 1, 1, 2, method="exhaustive", auxiliary=True)
+print(res.report())
+end
+```
 
 Note that if Stata says "restart required", run:
 
@@ -245,6 +253,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
