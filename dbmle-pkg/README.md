@@ -13,7 +13,7 @@ Installation
 
 Open a terminal (or Command Prompt on Windows) and run:
 
-    pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
+    python3 -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
 This installs the package and the command-line tool `dbmle`.
 
@@ -23,7 +23,7 @@ Open a terminal (or Command Prompt on Windows) and run:
 
     git clone https://github.com/shoeheng/dbmle.git
     cd dbmle/dbmle-pkg
-    pip install.
+    python3 -m pip install .
 
 Requirements:
 - Python ≥ 3.9  
@@ -31,15 +31,8 @@ Requirements:
 
 To check your Python version, run:
 
-    python --version
-    
-or on some systems:
-
     python3 --version
-
-If `pip` is not recognized, try:
-
-    python -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
+    
 ----------------------------------------------------------------------
 Usage
 ----------------------------------------------------------------------
@@ -256,6 +249,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
