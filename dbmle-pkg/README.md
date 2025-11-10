@@ -82,7 +82,7 @@ To set `auxiliary=False`, simply remove `--auxiliary` from the command line.
 
 Stata now supports calling Python directly, meaning one need not leave Stata. After installing `dbmle`, one can run 
 
-    python set exec "PATH\TO\PYTHON\python.exe"
+    python set exec "C:PATH\TO\PYTHON\python.exe"
 
 to set your Python path in Stata. Once your path is set, run
 ```stata
@@ -103,7 +103,13 @@ Alternatively, you can run shell command inside Stata using `!`. After `dbmle` i
 
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary 
 
-teo get the same result.
+to get the same result.
+
+If this doesn't work, find the directory where the dbmle.exe is kept and create a global. It is typically found under the "Scripts" folder in Python. For example,
+
+    global dbmle "C:\PATH\TO\PYTHON\Scripts\dbmle.exe"
+
+You can then run the above code.
 
 ----------------------------------------------------------------------
 Options
@@ -253,6 +259,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
