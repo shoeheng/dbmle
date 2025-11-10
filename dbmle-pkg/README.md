@@ -1,27 +1,21 @@
 `dbmle`
 ================
 
-This pakcage provides a design-based maximum likelihood estimation (MLE) for estimating the number of always takers, compliers, defiers, and never takers in an experiment using from binary intervention and outcome data. It supports both aggregated 2×2 count data and individual-level observations. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
+This package provides a design-based maximum likelihood estimate for estimating the number of always takers, compliers, defiers, and never takers in an experiment using from binary intervention and outcome data. It supports both aggregated 2×2 count data and individual-level observations. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
 
 ----------------------------------------------------------------------
 Installation
 ----------------------------------------------------------------------
 
-### Option 1 - Install directly from Github (recommended)
-
-Open a terminal (or Command Prompt on Windows), navigate to your proejct directory, and run:
+Open a terminal or command prompt, navigate to your proejct directory, and run:
 
     python3 -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
-This installs the package and the command-line tool `dbmle`.
+Once the package is published on PyPI, the installation command would be
 
-### Option 2 - Install from source
+    pip install dbmle
 
-Open a terminal (or Command Prompt on Windows) and run:
-
-    git clone https://github.com/shoeheng/dbmle.git
-    cd dbmle/dbmle-pkg
-    python3 -m pip install .
+This installs the package and the command-line tool `dbmle`. 
 
 Requirements:
 - Python ≥ 3.9  
@@ -253,6 +247,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
