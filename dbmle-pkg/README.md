@@ -7,7 +7,7 @@ This package provides a design-based maximum likelihood estimate for estimating 
 Installation
 ----------------------------------------------------------------------
 
-Open a terminal or command prompt, navigate to your proejct directory, and run:
+Open a terminal or command prompt, navigate to your project directory, and run:
 
     python3 -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
@@ -247,6 +247,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
