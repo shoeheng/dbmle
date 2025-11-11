@@ -11,7 +11,7 @@ Open a terminal or command prompt, navigate to your project directory, and run:
 
     python3 -m pip install "git+https://github.com/shoeheng/dbmle@main#subdirectory=dbmle-pkg"
 
-Once the package is published on PyPI, the installation command would be
+Once the package is published on PyPI, the installation command to install the package will be
 
     pip install dbmle
 
@@ -247,6 +247,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
