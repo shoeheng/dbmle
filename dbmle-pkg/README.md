@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate for estimating the number of always takers, compliers, defiers, and never takers in an experiment using binary intervention and outcome data. It supports both individual-level data and aggregated counts (like a 2×2 contingency table). Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
+This package provides a design-based maximum likelihood estimate for estimating the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment by leveraging structure from the randomization design and using binary intervention and outcome data. It supports both individual-level data and aggregated counts (like a 2×2 contingency table). Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
 
 ----------------------------------------------------------------------
 Installation
@@ -247,6 +247,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
