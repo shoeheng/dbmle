@@ -26,9 +26,9 @@ Usage
 ----------------------------------------------------------------------
 
 The MLE can be calculated from aggregated counts $(x_{I1},x_{I0},x_{C1},x_{C0})$, which are the counts of subjects who take up in intervention $x_{I1}$,
-who do not take up in intervention $x_{I0}$,
-who take up in control $x_{C1}$,
-and who do not take up in control $x_{C0}$.
+do not take up in intervention $x_{I0}$,
+take up in control $x_{C1}$,
+and do not take up in control $x_{C0}$.
 
 ### 1. Python 
 
@@ -48,9 +48,9 @@ It can also be calculated from the individual-level data using the `dbmle_from_Z
 from dbmle import dbmle_from_ZD
 
 # Z: randomized assignment indicator (1 = intervention, 0 = control)
-# D: observed take-up indicator (1 = treatment takeup, 0 = did not)
-Z = [1, 1, 0, 1, 0, 1, 0, 0]
-D = [1, 0, 1, 1, 0, 1, 0, 0]
+# D: observed takeup indicator (1 = treatment takeup, 0 = did not)
+Z = [1, 1, 1, 0, 0, 0]
+D = [1, 1, 0, 1, 0, 0]
 
 res = dbmle_from_ZD(Z, D, method="exhaustive", auxiliary=True)
 print(res.report())
@@ -247,6 +247,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
