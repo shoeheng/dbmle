@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. 
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. We also provide directions to use this package in Stata. 
 
 ----------------------------------------------------------------------
 Installation
@@ -30,16 +30,16 @@ do not take up in intervention $x_{I0}$,
 take up in control $x_{C1}$,
 and do not take up in control $x_{C0}$.
 
-### 1. Python 
+### 1. Within Python 
 
 A sample script in Python using `dbmle` with aggregate counts looks as follows:
 
 ```python
 from dbmle import dbmle
 
-# Inputs correspond to the observed 2×2 table:
-# (xI1, xI0, xC1, xC0) = (50, 11, 23, 31)
-res = dbmle(50, 11, 23, 31, method="approx", auxiliary=True)
+# Inputs correspond to aggregated count data:
+# (xI1, xI0, xC1, xC0) = (50, 11, 23, 31), from Johnson and Goldstein (2003)
+res = dbmle(50, 11, 23, 31)
 print(res.report())
 ```
 
@@ -52,25 +52,52 @@ from dbmle import dbmle_from_ZD
 Z = [1, 1, 1, 0, 0, 0]
 D = [1, 1, 0, 1, 0, 0]
 
-res = dbmle_from_ZD(Z, D, method="exhaustive", auxiliary=True)
+res = dbmle_from_ZD(Z, D)
 print(res.report())
 ```
 
-Both commands return a DBMLEResult object whose .report() method prints a formatted summary of standard statistics, and MLEs. More statistics are reported if `auxiliary = True`.
+Both commands return a DBMLEResult object whose .report() method prints a formatted summary of standard statistics, and MLEs.
 
 ### 2. Command Line Usage
 
 Once installed, you can also use dbmle directly in the command line. The first example Python code above would equivalently be
 
-    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary 
+    dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 
 
-To set `auxiliary=False`, simply remove `--auxiliary` from the command line.
+----------------------------------------------------------------------
+Using `dbmle` in Stata
+----------------------------------------------------------------------
 
-### 3. Using `dbmle` in Stata
+Below is a guide to using Python within Stata. The first step is installing Python. If you already have Python 3.9 or higher installed, skip this step.
 
-Stata now supports calling Python directly, meaning one need not leave Stata. After installing `dbmle`, one can run 
+### 1. Install Python
 
-    python set exec "C:PATH\TO\PYTHON\python.exe"
+Go to https://www.python.org/downloads/ and download the latest Python installer for your operating system. run the installer and check the option "Add Python to PATH" after running the installer.
+
+### 2. Open Stata and tell Stata how to use Python
+
+In the Stata command prompt, run
+
+    python query
+
+You should get an output similar to
+
+    Python Settings
+      set python_exec      /path/to/python
+      set python_userpath  
+
+    Python system information
+      initialized          no
+      version              3.12.8
+      architecture         64-bit
+      library path         /.../lib64/libpython3.12.so.1.0
+
+that is, `set python_exec` should have a valid path to python and `version` should be 3.9 or greater. Once this is done, `dbmle` can be used directly in the command line of stata by typing a command like 
+
+    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
+
+
+BELOW HERE IS RANDOM STUFF, TO FIGURE OUT TROUbLE SHOOTING
 
 to set your Python path in Stata. Once your path is set, run
 ```stata
@@ -87,17 +114,13 @@ Note that if Stata says "restart required", run:
 
 and reopen Stata.
 
-Alternatively, you can run shell command inside Stata using `!`. After `dbmle` is installed, you can run
-
-    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --method exhuastive --auxiliary 
-
-to get the same result.
-
 If this doesn't work, find the directory where the dbmle.exe is kept and create a global. It is typically found under the "Scripts" folder in Python. For example,
 
     global dbmle "C:\PATH\TO\PYTHON\Scripts\dbmle.exe"
 
 You can then run the above code.
+
+END SECTION WITH MATERIALS TO POSSIBLY BE INCLUDED
 
 ----------------------------------------------------------------------
 Options
@@ -247,6 +270,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
