@@ -227,7 +227,7 @@ def _best_frechet_corner_point(
 
     scored = [(t, _loglik(n, m, xI1, xC1, *t)) for t in cands]
     best_ll = max(ll for _, ll in scored)
-    bests = [t for t, ll in scored if abs(ll - best_ll) <= 1e-13]
+    bests = [t for t, ll in scored if abs(ll - best_ll) <= 1e-15]
     # deterministic tie-breaking
     return sorted(bests)[0]
 
@@ -428,7 +428,7 @@ def fast_mle(
     xI1: int,
     xC1: int,
     delta: Optional[int] = None,
-    tol: float = 1e-13,
+    tol: float = 1e-15,
     allow_one_shot_expand: bool = True,
 ) -> Tuple[List[Theta], float, Dict[str, Any]]:
     """
@@ -616,7 +616,7 @@ def _exhaustive_grid(
         }
 
     max_ll = max(lls)
-    tol = 1e-13
+    tol = 1e-15
     mles = [thetas[i] for i, ll in enumerate(lls) if abs(ll - max_ll) <= tol]
 
     # posterior weights over the feasible theta's
@@ -1027,7 +1027,7 @@ class DBMLEResult(dict):
         # keep the key name for compatibility
         return self.get("report", repr(self))
 
-# ── helpers: parse a single value to binary 0/1 if possible ─────────────────────
+# ── helpers: parse a single value to binary 0/1 if possible (unchanged) ─────────
 def _try_parse_binary(v) -> Optional[int]:
     """
     Return 0 or 1 if v represents exactly binary {0,1}; otherwise return None.
@@ -1049,71 +1049,47 @@ def _try_parse_binary(v) -> Optional[int]:
     return None  # unsupported type
 
 
+# ── STRICT sanitization: reject any invalidity, no coercion, no warnings ────────
 def _sanitize_ZD(
     Z,
     D,
-    invalid_policy: str = "drop",
-    warn_on_invalid: bool = True,
-    warn_limit: int = 10,
+    invalid_report_limit: int = 10,   # how many bad indices to show in the error
 ) -> Tuple[int, int, int, int, Dict[str, Any]]:
     """
-    Validate+aggregate (Z, D) to 2x2 counts with flexible invalid handling.
+    Strictly validate + aggregate (Z, D) into 2x2 counts.
+
+    Behavior:
+      - Raises ValueError if Z or D is None, lengths differ, or any entry is not exactly binary.
+      - Accepts only: {0,1} (bool/int), {0.0,1.0} (finite floats), or strings "0"/"1".
+      - Raises ValueError if, after parsing, either arm is empty (no Z==1 or no Z==0).
 
     Returns
     -------
-    xI1, xI0, xC1, xC0, stats
-
-    stats includes:
-        total, used, dropped, coerced_Z, coerced_D,
-        invalid_indices (up to warn_limit),
-        policy
+    xI1, xI0, xC1, xC0, stats  (stats summarizes totals; no warnings/coercions)
     """
     if Z is None or D is None:
-        raise ValueError("Z and D must be sequences of equal length.")
+        raise ValueError("dbmle_from_ZD: Z and D must be non-None sequences of equal length.")
     if len(Z) != len(D):
-        raise ValueError(f"Z and D must have the same length (got {len(Z)} vs {len(D)}).")
-    if invalid_policy not in {"drop", "coerce-0", "coerce-1", "raise"}:
         raise ValueError(
-            "invalid_policy must be one of {'drop','coerce-0','coerce-1','raise'}."
+            f"dbmle_from_ZD: Z and D must have the same length (got {len(Z)} vs {len(D)})."
         )
-
-    default_val = None
-    if invalid_policy == "coerce-0":
-        default_val = 0
-    elif invalid_policy == "coerce-1":
-        default_val = 1
 
     xI1 = xI0 = xC1 = xC0 = 0
     total = len(Z)
     used = 0
-    dropped = 0
-    coerced_Z = 0
-    coerced_D = 0
+
     bad_idxs: List[int] = []
+    bad_samples: List[str] = []  # optional value preview
 
     for i, (z_raw, d_raw) in enumerate(zip(Z, D)):
         z = _try_parse_binary(z_raw)
         d = _try_parse_binary(d_raw)
 
         if (z is None) or (d is None):
-            if invalid_policy == "raise":
-                which = []
-                if z is None: which.append(f"Z[{i}]={z_raw!r}")
-                if d is None: which.append(f"D[{i}]={d_raw!r}")
-                raise ValueError(f"Invalid {', '.join(which)}; expected 0/1.")
-            elif invalid_policy == "drop":
-                dropped += 1
-                if len(bad_idxs) < warn_limit:
-                    bad_idxs.append(i)
-                continue
-            else:
-                # coerce to default_val (0 or 1)
-                if z is None:
-                    z = default_val  # type: ignore[assignment]
-                    coerced_Z += 1
-                if d is None:
-                    d = default_val  # type: ignore[assignment]
-                    coerced_D += 1
+            if len(bad_idxs) < invalid_report_limit:
+                bad_idxs.append(i)
+                bad_samples.append(f"Z[{i}]={z_raw!r}, D[{i}]={d_raw!r}")
+            continue
 
         # aggregate
         if z == 1:
@@ -1124,127 +1100,130 @@ def _sanitize_ZD(
             else:      xC0 += 1
         used += 1
 
-    # Warn once with a concise summary
-    if warn_on_invalid and (dropped > 0 or coerced_Z > 0 or coerced_D > 0):
-        details = []
-        if dropped:
-            details.append(f"dropped={dropped}")
-        if coerced_Z:
-            details.append(f"coerced_Z={coerced_Z}")
-        if coerced_D:
-            details.append(f"coerced_D={coerced_D}")
-        where = f"; first invalid indices: {bad_idxs}" if bad_idxs else ""
-        warnings.warn(
-            f"dbmle_from_ZD: invalid entries handled by policy='{invalid_policy}' "
-            f"({', '.join(details)}; total={total}, used={used}){where}",
-            UserWarning,
-            stacklevel=2,
+    # If any invalid, bail out with a concise but helpful error.
+    if bad_idxs:
+        preview = "; ".join(bad_samples)
+        more = "" if len(bad_idxs) < invalid_report_limit else " (truncated)"
+        raise ValueError(
+            "dbmle_from_ZD: invalid (non-binary) entries detected. "
+            f"First {min(len(bad_idxs), invalid_report_limit)} invalid indices: {bad_idxs}{more}. "
+            f"Examples: {preview}. "
+            "Values must be exactly 0/1 (bool/int), 0.0/1.0 (finite float), or '0'/'1' (str)."
         )
 
-    # sanity: both arms must be non-empty after handling
+    # sanity: both arms must be non-empty
     I = xI1 + xI0
     C = xC1 + xC0
     if I == 0 or C == 0:
         raise ValueError(
-            f"After applying invalid_policy='{invalid_policy}', one arm is empty: I={I}, C={C}. "
-            "Ensure Z (after cleaning) contains at least one 1 and one 0."
+            f"dbmle_from_ZD: one arm is empty after parsing (I={I}, C={C}). "
+            "Ensure Z contains at least one 1 and one 0."
         )
 
     stats = {
         "total": total,
         "used": used,
-        "dropped": dropped,
-        "coerced_Z": coerced_Z,
-        "coerced_D": coerced_D,
-        "invalid_indices": bad_idxs,
-        "policy": invalid_policy,
+        "invalid_count": 0,          # explicit: strict mode rejects invalids
+        "invalid_report_limit": invalid_report_limit,
+        "policy": "strict",          # for transparency in meta
     }
     return xI1, xI0, xC1, xC0, stats
 
 
+
+
+
 # =====================================================================
-# main command
+# main command (NEW API: output = {'basic','auxiliary','approx'})
 # =====================================================================
 def dbmle(
     xI1: int,
     xI0: int,
     xC1: int,
     xC0: int,
-    method: str = "approx",
-    auxiliary: bool = False,
+    output: str = "basic",          # NEW unified interface
     level: float = 0.95,
     show_progress: bool = True,
 ) -> DBMLEResult:
     """
-    Pick method (approx vs exhaustive) and depth of
-    statistics (auxiliary = False vs True), and return a structured result
-    plus a printable report string.
+    Unified front-end for design-based MLE reporting.
+
+    Parameters
+    ----------
+    xI1, xI0, xC1, xC0 : int
+        2x2 counts (intervention/control by take-up)
+    output : {"basic","auxiliary","approx"}, default "basic"
+        - "basic"     : exhaustive grid; Standard Stats + MLE + global 95% SCS
+        - "auxiliary" : exhaustive grid; includes auxiliary Frechet-based stats
+        - "approx"    : fast approximate MLE only (no auxiliaries)
+          (Also accepts the misspelling "axuiliary" as "auxiliary")
+    level : float, default 0.95
+        Credible-set coverage level
+    show_progress : bool, default True
+        Show tqdm progress bar for exhaustive enumeration
+
+    Returns
+    -------
+    DBMLEResult
+        Structured output with a printable "report" string
     """
     _validate_inputs(xI1, xI0, xC1, xC0)
     m = xI1 + xI0
     c = xC1 + xC0
     n = m + c
 
+    # normalize output mode
+    out_mode = (output or "basic").strip().lower()
+    if out_mode == "axuiliary":  # accept common misspelling per user request
+        out_mode = "auxiliary"
+    if out_mode not in {"basic", "auxiliary", "approx"}:
+        raise ValueError("output must be one of {'basic','auxiliary','approx'}.")
+
     out: Dict[str, Any] = {
         "summary": {
-            "inputs": {
-                "xI1": xI1,
-                "xI0": xI0,
-                "xC1": xC1,
-                "xC0": xC0,
-                "n": n,
-                "m": m,
-                "c": c,
-            }
+            "inputs": {"xI1": xI1, "xI0": xI0, "xC1": xC1, "xC0": xC0, "n": n, "m": m, "c": c}
         },
         "meta": {
-            "method": method,
-            "auxiliary": auxiliary,
+            "output": out_mode,   # NEW canonical interface field
+            # For transparency, we also expose the underlying implementation path:
+            "impl": (
+                {"method": "exhaustive", "auxiliary": False} if out_mode == "basic" else
+                {"method": "exhaustive", "auxiliary": True}  if out_mode == "auxiliary" else
+                {"method": "approx",     "auxiliary": False}
+            ),
             "level": level,
         },
     }
-
-    # Warning when approx + auxiliary=True
-    if method.lower() == "approx" and auxiliary:
-        warnings.warn(
-            "Note: When 'auxiliary=True' is specified with method='approx', "
-            "the function automatically performs an exhaustive grid search to "
-            "compute the true MLE and 95% credible set. The MLE is exact as well.",
-            UserWarning,
-            stacklevel=2,
-        )
 
     largest_support = _largest_possible_support(n, m, xI1, xC1)
     est_frechet = _estimated_frechet_bounds_discrete(n, m, xI1, xC1)
 
     # ================================================================
-    # 1) EXHAUSTIVE
+    # Exhaustive paths ("basic" and "auxiliary")
     # ================================================================
-    if method.lower() == "exhaustive":
+    if out_mode in {"basic", "auxiliary"}:
         grid = _exhaustive_grid(n, m, xI1, xC1, level=level, show_progress=show_progress)
         mles = grid["mles"]
         global_ints = grid["intervals"]
 
-        if auxiliary:
-            fre_scs = _frechet_marginal_scs(n, m, xI1, xC1, level=level)
-        else:
-            fre_scs = None
+        # Only build the Frechet-internal SCS when "auxiliary"
+        fre_scs = _frechet_marginal_scs(n, m, xI1, xC1, level=level) if out_mode == "auxiliary" else None
 
         std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
 
-        # If there are tied MLEs, print one block per MLE (even when auxiliary=False)
+        # If there are tied MLEs, print one block per MLE
         if len(mles) > 1:
             blocks: List[str] = []
             for idx, mle_theta in enumerate(mles, start=1):
                 this_tbl = _make_mle_table(
                     n,
-                    [mle_theta],   # force THIS MLE to be first/only in the table
-                    auxiliary,
-                    "exhaustive",
-                    largest_support,
-                    global_scs=global_ints,                   # show SCS if method=exhaustive
-                    est_frechet=est_frechet if auxiliary else None,
-                    frechet_scs=fre_scs if auxiliary else None,
+                    [mle_theta],                         # single MLE per block
+                    auxiliary=(out_mode == "auxiliary"),
+                    method="exhaustive",
+                    largest_support=largest_support,
+                    global_scs=global_ints,              # show SCS for exhaustive paths
+                    est_frechet=est_frechet if out_mode == "auxiliary" else None,
+                    frechet_scs=fre_scs if out_mode == "auxiliary" else None,
                 )
                 blocks.append(f"(tied MLE #{idx})\n{this_tbl}")
             mle_tbl = "\n\n".join(blocks)
@@ -1252,12 +1231,12 @@ def dbmle(
             mle_tbl = _make_mle_table(
                 n,
                 mles,
-                auxiliary,
-                "exhaustive",
-                largest_support,
+                auxiliary=(out_mode == "auxiliary"),
+                method="exhaustive",
+                largest_support=largest_support,
                 global_scs=global_ints,
-                est_frechet=est_frechet if auxiliary else None,
-                frechet_scs=fre_scs if auxiliary else None,
+                est_frechet=est_frechet if out_mode == "auxiliary" else None,
+                frechet_scs=fre_scs if out_mode == "auxiliary" else None,
             )
 
         out.update(
@@ -1267,10 +1246,7 @@ def dbmle(
                     "largest_possible_support": largest_support,
                     "estimated_frechet_bounds": est_frechet,
                 },
-                "global_95_scs": {
-                    "intervals": global_ints,
-                    "union_str": grid["union_str"],
-                },
+                "global_95_scs": {"intervals": global_ints, "union_str": grid["union_str"]},
                 "report": "\n" + std_tbl + "\n\n" + mle_tbl,
             }
         )
@@ -1280,161 +1256,82 @@ def dbmle(
         return DBMLEResult(out)
 
     # ================================================================
-    # 2) APPROX + NO AUXILIARY (old "proposed")
+    # Approx path ("approx")
     # ================================================================
-    if method.lower() == "approx" and not auxiliary:
-        mles_fast, ll_fast, meta_fast = fast_mle(
-            n, m, xI1, xC1, allow_one_shot_expand=True
-        )
-        out["mle"] = {"mle_list": mles_fast, "max_loglik": ll_fast}
-        out["meta"]["fast_mle"] = meta_fast
-
-        std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
-
-        # If there are tied MLEs, print one block per MLE even without auxiliaries
-        if len(mles_fast) > 1:
-            blocks2: List[str] = []
-            for idx, mle_theta in enumerate(mles_fast, start=1):
-                this_tbl = _make_mle_table(
-                    n,
-                    [mle_theta],   # single MLE per block
-                    False,         # auxiliary=False
-                    "approx",
-                    largest_support,
-                )
-                blocks2.append(f"(tied MLE #{idx})\n{this_tbl}")
-            mle_tbl = "\n\n".join(blocks2)
-        else:
-            mle_tbl = _make_mle_table(
-                n,
-                mles_fast,
-                False,
-                "approx",
-                largest_support,
-            )
-
-        out["report"] = "\n" + std_tbl + "\n\n" + mle_tbl
-        out["supports"] = {
-            "largest_possible_support": largest_support,
-            "estimated_frechet_bounds": est_frechet,
-        }
-        return DBMLEResult(out)
-
-
-    # ================================================================
-    # 3) APPROX + AUXILIARY (same behavior as exhaustive + auxiliary)
-    # ================================================================
-    grid = _exhaustive_grid(n, m, xI1, xC1, level=level, show_progress=show_progress)
-    mles_exact = grid["mles"]
-    global_ints = grid["intervals"]
-    fre_scs = _frechet_marginal_scs(n, m, xI1, xC1, level=level)
+    # (old: method="approx", auxiliary=False)
+    mles_fast, ll_fast, meta_fast = fast_mle(n, m, xI1, xC1, allow_one_shot_expand=True)
+    out["mle"] = {"mle_list": mles_fast, "max_loglik": ll_fast}
+    out["meta"]["fast_mle"] = meta_fast
 
     std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
 
-    if len(mles_exact) > 1:
-        aux_blocks2: List[str] = []
-        for idx, mle_theta in enumerate(mles_exact, start=1):
+    if len(mles_fast) > 1:
+        blocks2: List[str] = []
+        for idx, mle_theta in enumerate(mles_fast, start=1):
             this_tbl = _make_mle_table(
                 n,
-                [mle_theta],
-                True,
-                "approx",         # label: user asked approx
-                largest_support,
-                global_scs=global_ints,
-                est_frechet=est_frechet,
-                frechet_scs=fre_scs,
+                [mle_theta],       # single MLE per block
+                auxiliary=False,   # approx mode never shows auxiliaries
+                method="approx",
+                largest_support=largest_support,
             )
-            aux_blocks2.append(f"(tied MLE #{idx})\n{this_tbl}")
-        mle_tbl = "\n\n".join(aux_blocks2)
+            blocks2.append(f"(tied MLE #{idx})\n{this_tbl}")
+        mle_tbl = "\n\n".join(blocks2)
     else:
         mle_tbl = _make_mle_table(
             n,
-            mles_exact,
-            True,
-            "approx",                   # label remains "approx" because user requested it
-            largest_support,
-            global_scs=global_ints,
-            est_frechet=est_frechet,
-            frechet_scs=fre_scs,
+            mles_fast,
+            auxiliary=False,
+            method="approx",
+            largest_support=largest_support,
         )
 
-    out.update(
-        {
-            "mle": {"mle_list": mles_exact, "max_loglik": grid["max_loglik"]},
-            "supports": {
-                "largest_possible_support": largest_support,
-                "estimated_frechet_bounds": est_frechet,
-            },
-            "global_95_scs": {
-                "intervals": global_ints,
-                "union_str": grid["union_str"],
-            },
-            "frechet_95_scs": fre_scs,
-            "report": "\n" + std_tbl + "\n\n" + mle_tbl,
-        }
-    )
+    out["report"] = "\n" + std_tbl + "\n\n" + mle_tbl
+    out["supports"] = {
+        "largest_possible_support": largest_support,
+        "estimated_frechet_bounds": est_frechet,
+    }
     return DBMLEResult(out)
 
 
+# =====================================================================
+# dbmle_from_ZD (STRICT; no invalid_policy / warn_on_invalid)
+# =====================================================================
 def dbmle_from_ZD(
     Z: List[int],
     D: List[int],
-    method: str = "approx",
-    auxiliary: bool = False,
+    output: str = "basic",
     level: float = 0.95,
     show_progress: bool = True,
-    invalid_policy: str = "drop",     # "drop" | "coerce-0" | "coerce-1" | "raise"
-    warn_on_invalid: bool = True,
 ) -> DBMLEResult:
     """
-    Takes individual-level data (Z, D) and converts to counts, with robust handling of
-    invalid/missing entries.
+    Strict version: aggregate (Z, D) to counts and run dbmle with `output`.
+
+    - Raises on any data issue (length mismatch, missing/NaN, non-binary entries,
+      or empty arm after parsing).
+    - No coercion, no dropping, no warnings.
 
     Parameters
     ----------
-    Z : sequence of 0/1 (bool/int/float/str accepted if exactly {0,1})
-        Randomized assignment (1 = intervention, 0 = control).
-    D : sequence of 0/1 (bool/int/float/str accepted if exactly {0,1})
-        Observed take-up (1 = took up treatment, 0 = did not).
-    method : {"approx","exhaustive"}, default "approx"
-    auxiliary : bool, default False
+    Z : sequence of length N with elements exactly in {0,1} (or 0.0/1.0, True/False, "0"/"1")
+    D : sequence of length N with elements exactly in {0,1} (or 0.0/1.0, True/False, "0"/"1")
+    output : {"basic","auxiliary","approx"}, default "basic"
     level : float, default 0.95
     show_progress : bool, default True
-    invalid_policy : {"drop","coerce-0","coerce-1","raise"}, default "drop"
-        - "drop": ignore any record with invalid Z or D; warn with counts.
-        - "coerce-0": coerce invalid Z/D values to 0; warn with counts.
-        - "coerce-1": coerce invalid Z/D values to 1; warn with counts.
-        - "raise": strict mode; raise ValueError on the first invalid entry.
-    warn_on_invalid : bool, default True
-        Emit a single summary warning if any invalid entries were dropped/coerced.
-
-    Raises
-    ------
-    ValueError
-        - If Z and D lengths differ.
-        - If invalid_policy is unknown.
-        - If, after cleaning, either arm is empty (no Z==1 or no Z==0).
-
-    Returns
-    -------
-    DBMLEResult
     """
-    xI1, xI0, xC1, xC0, stats = _sanitize_ZD(
-        Z, D, invalid_policy=invalid_policy, warn_on_invalid=warn_on_invalid
-    )
+    xI1, xI0, xC1, xC0, stats = _sanitize_ZD(Z, D)
 
     result = dbmle(
         xI1,
         xI0,
         xC1,
         xC0,
-        method=method,
-        auxiliary=auxiliary,
+        output=output,
         level=level,
         show_progress=show_progress,
     )
 
-    # attach cleaning stats for transparency/debugging
+    # keep a transparent note that strict parsing was used
     meta = result.setdefault("meta", {})
     meta["from_ZD"] = stats
     return result
