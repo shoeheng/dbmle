@@ -97,7 +97,7 @@ that is, `set python_exec` should have a valid path to python and `version` shou
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 
 
-BELOW HERE IS RANDOM STUFF, TO FIGURE OUT TROUbLE SHOOTING
+BELOW HERE IS RANDOM STUFF, TO FIGURE OUT TROUBLE SHOOTING
 
 to set your Python path in Stata. Once your path is set, run
 ```stata
@@ -123,48 +123,23 @@ You can then run the above code.
 END SECTION WITH MATERIALS TO POSSIBLY BE INCLUDED
 
 ----------------------------------------------------------------------
-Options
+Parameters
 ----------------------------------------------------------------------
 
-Each command supports the following parameters:
+Aisde from the data input, each command supports the following parameters:
 
-- **method**  
-  `"approx"` (fast approximation) or `"exhaustive"` (exhaustive grid search).  
-  *Default:* `"approx"`
-
-- **auxiliary**  
-  Whether to include auxiliary statistics aside from just the MLE (and creidble sets if `method = "exhaustive"`)  
-  *Default:* `False`
-  **Important:** When `auxiliary=True`, the package automatically performs an **exhaustive** grid search to compute the exact MLE and credible sets, even if `method="approx"` was requested since the likelihood of every joint distribution needs to be calculated for the credible set.  
+- **output:** `"basic"`, `"auxiliary"`, _or_ `"approx"`  
+  *Default:* `"approx"`  
+What statistics are to be calculated and displayed. `"basic"` performs an exhaustive grid search and returns the MLE(s) along with the smallest credible set. `"auxiliary`" returns the statistics that `"basic"` returns along with the largest possible support, estimated Frechet bounds, and the smallest credible set conditional on being within the estimated Frechet set. `"approx"` uses a significantly faster approximation algorithm to calculate the MLE(s) and only returns the MLE(s). All three return a standard statistics table as well.
   
-- **level**  
-  Credible-set level (e.g. `0.95` for 95%).  
-  *Default:* `0.95`
+- **level:** _float_  
+  *Default:* `0.95`  
+  Smallest credible-set level (e.g. `0.95` for 95%).
 
-- **show_progress**  
-  Whether to display a tqdm progress bar (mainly relevant for exhaustive mode).  
-  *Default:* `True`
-  
-### Additional options for `dbmle_from_ZD(...)`
+- **show_progress:** _bool_   
+  *Default:* `True`  
+  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant `output="approx"`). 
 
-When using the individual-data level command (`Z` assignment, `D` take-up), you also have controls for invalid data handling:
-
-- **`invalid_policy`**  
-  How to handle entries in `Z` or `D` that are not clean binary values (accepted binaries are: `0/1`, `True/False`, `0.0/1.0`, and strings `"0"`/`"1"`).  
-  Choices:  
-  - `"drop"` – ignore any record with an invalid `Z` or `D` (default).  
-  - `"coerce-0"` – coerce invalid values to `0`.  
-  - `"coerce-1"` – coerce invalid values to `1`.  
-  - `"raise"` – strict mode; raise a `ValueError` on the first invalid entry.  
-  *Default:* `"drop"`
-
-- **`warn_on_invalid`**  
-  Emit a single summary warning if any entries were dropped or coerced. The warning reports counts and a few example indices.  
-  *Default:* `True`
-
-**Notes:**  
-- After cleaning (according to `invalid_policy`), both arms must be non-empty (at least one `Z=1` and one `Z=0`), otherwise a `ValueError` is raised.  
-- When `auxiliary=True` in `dbmle_from_ZD(...)`, the same override applies: an exhaustive grid search is run to obtain the exact MLE and credible sets, regardless of `method`.
 ----------------------------------------------------------------------
 Note on Approximation
 ----------------------------------------------------------------------
@@ -270,6 +245,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
