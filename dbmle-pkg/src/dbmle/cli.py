@@ -9,31 +9,29 @@ from dbmle.core import dbmle
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Design-based MLE for always-takers, compliers, defiers, and never-takers "
-            "from 2x2 counts (xI1, xI0, xC1, xC0). "
-            "For Z/D individual-level input, call dbmle_from_ZD in Python."
+            "Design-based MLE for always takers, compliers, defiers, and never takers "
+            "from aggregate counts (xI1, xI0, xC1, xC0).\n\n"
+            "Tip: For individual-level Z/D input, call `dbmle_from_ZD` from Python."
         )
     )
 
     # Required 2x2 counts
-    parser.add_argument("--xI1", type=int, required=True, help="Intervention: took up treatment")
-    parser.add_argument("--xI0", type=int, required=True, help="Intervention: did not take up")
-    parser.add_argument("--xC1", type=int, required=True, help="Control: took up treatment")
-    parser.add_argument("--xC0", type=int, required=True, help="Control: did not take up")
+    parser.add_argument("--xI1", type=int, required=True, help="Takeup in Intervention")
+    parser.add_argument("--xI0", type=int, required=True, help="No Takeup in Intervention")
+    parser.add_argument("--xC1", type=int, required=True, help="Takeup in Control")
+    parser.add_argument("--xC0", type=int, required=True, help="No Takeup in Control")
 
-    # Method (fast vs exact)
+    # Unified output mode
     parser.add_argument(
-        "--method",
-        choices=["approx", "exhaustive"],
+        "--output",
+        choices=["basic", "auxiliary", "approx"],  
         default="approx",
-        help="MLE method: fast ('approx') or exact grid search ('exhaustive').",
-    )
-
-    # Auxiliary stats toggle (flag only; do NOT pass True/False after it)
-    parser.add_argument(
-        "--auxiliary",
-        action="store_true",
-        help="If set, include auxiliary statistics (credible sets, bounds).",
+        help=(
+            "What to compute and display:\n"
+            "  - basic     : exhaustive grid; Standard Stats + MLE(s) + global 95%% SCS\n"
+            "  - auxiliary : exhaustive grid; adds Frechet-based stats and Frechet-conditional 95%% SCS\n"
+            "  - approx    : fast approximate MLE only (no auxiliaries)\n"
+        ),
     )
 
     # Credible set level
@@ -41,26 +39,25 @@ def main():
         "--level",
         type=float,
         default=0.95,
-        help="Credible set confidence level (default: 0.95).",
+        help="Credible-set level (default: 0.95).",
     )
 
     # Progress bar toggle
     parser.add_argument(
         "--no-progress",
         action="store_true",
-        help="Hide progress bar (relevant only for exhaustive mode).",
+        help="Hide progress bar (relevant only for exhaustive modes: 'basic'/'auxiliary').",
     )
 
     args = parser.parse_args()
 
-    # Run the estimator
+    # Run the estimator with the unified interface
     res = dbmle(
         args.xI1,
         args.xI0,
         args.xC1,
         args.xC0,
-        method=args.method,
-        auxiliary=args.auxiliary,
+        output=args.output,
         level=args.level,
         show_progress=not args.no_progress,
     )
