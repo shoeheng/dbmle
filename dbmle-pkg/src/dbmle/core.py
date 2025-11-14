@@ -565,6 +565,9 @@ def _exhaustive_grid(
         total=total_upper,
         desc="Enumerating Joint Distributions",
         unit="Joint Distribution",
+        position=0,
+        leave=True,
+        smoothing=0.1
     ) if show_progress else None
 
     thetas: List[Theta] = []
@@ -908,7 +911,7 @@ def classify_kinks(p1_hat: float, p0_hat: float,
     return lower_branch, upper_branch
 
 
-def principal_strata_ci_junlee(
+def principal_strata_ci_imjl(
     n: int,
     m: int,
     xI1: int,
@@ -1020,7 +1023,7 @@ def principal_strata_ci_junlee(
     return results
 
 
-def _junlee_ci_from_counts(
+def _imjl_ci_from_counts(
     n: int,
     m: int,
     xI1: int,
@@ -1030,7 +1033,7 @@ def _junlee_ci_from_counts(
     Convenience wrapper: run Jun–Lee CIs at 95% with pretest 0.001,
     return (lower, upper) for each cell key "theta11",..., in share units.
     """
-    cis = principal_strata_ci_junlee(
+    cis = principal_strata_ci_imjl(
         n, m, xI1, xC1,
         alpha=0.05,
         bar_alpha=0.001,
@@ -1112,7 +1115,7 @@ def _make_mle_table(
     global_scs: Optional[Dict[str, List[Tuple[int, int]]]] = None,
     est_frechet: Optional[Dict[str, Any]] = None,
     frechet_scs: Optional[Dict[str, Any]] = None,
-    junlee_cis: Optional[Dict[str, Tuple[float, float]]] = None,  # <-- ADD
+    imjl_cis: Optional[Dict[str, Tuple[float, float]]] = None,  # <-- ADD
 ) -> str:
 
     """
@@ -1149,10 +1152,10 @@ def _make_mle_table(
             return None
         return frechet_scs.get(key + "_denoms")
 
-    def _get_junlee_for(key: str) -> Optional[Tuple[float, float]]:
-        if junlee_cis is None:
+    def _get_imjl_for(key: str) -> Optional[Tuple[float, float]]:
+        if imjl_cis is None:
             return None
-        return junlee_cis.get(key)
+        return imjl_cis.get(key)
 
     def _fmt_single_interval_frac(a: int, b: int, denom: int) -> str:
         if a == b:
@@ -1225,7 +1228,7 @@ def _make_mle_table(
         if jun_ci is not None:
             lo, hi = jun_ci
             blk.append(
-                "  95% Jun-Lee CI (share): "
+                "  Imbens Manski Jun Lee 95% Confidence Interval: "
                 f"[{lo*100:.2f}%, {hi*100:.2f}%]"
             )
 
@@ -1254,7 +1257,7 @@ def _make_mle_table(
         largest_support["theta11"],
         _get_global_scs_for("theta11"),
         _get_est_frechet_for("theta11"),
-        _get_junlee_for("theta11"),                 # <-- ADD
+        _get_imjl_for("theta11"),                 # <-- ADD
         _get_frechet_scs_for("theta11"),
         _get_frechet_denoms_for("theta11"),
     )
@@ -1266,7 +1269,7 @@ def _make_mle_table(
         largest_support["theta10"],
         _get_global_scs_for("theta10"),
         _get_est_frechet_for("theta10"),
-        _get_junlee_for("theta10"),                 # <-- ADD
+        _get_imjl_for("theta10"),                 # <-- ADD
         _get_frechet_scs_for("theta10"),
         _get_frechet_denoms_for("theta10"),
     )
@@ -1278,7 +1281,7 @@ def _make_mle_table(
         largest_support["theta01"],
         _get_global_scs_for("theta01"),
         _get_est_frechet_for("theta01"),
-        _get_junlee_for("theta01"),                 # <-- ADD
+        _get_imjl_for("theta01"),                 # <-- ADD
         _get_frechet_scs_for("theta01"),
         _get_frechet_denoms_for("theta01"),
     )
@@ -1290,7 +1293,7 @@ def _make_mle_table(
         largest_support["theta00"],
         _get_global_scs_for("theta00"),
         _get_est_frechet_for("theta00"),
-        _get_junlee_for("theta00"),                 # <-- ADD
+        _get_imjl_for("theta00"),                 # <-- ADD
         _get_frechet_scs_for("theta00"),
         _get_frechet_denoms_for("theta00"),
     )
@@ -1481,9 +1484,9 @@ def dbmle(
 
     largest_support = _largest_possible_support(n, m, xI1, xC1)
     est_frechet = _estimated_frechet_bounds_discrete(n, m, xI1, xC1)
-    junlee_cis = None
+    imjl_cis = None
     if out_mode == "auxiliary":
-        junlee_cis = _junlee_ci_from_counts(n, m, xI1, xC1)
+        imjl_cis = _imjl_ci_from_counts(n, m, xI1, xC1)
 
     # ================================================================
     # Exhaustive paths ("basic" and "auxiliary")
@@ -1511,7 +1514,7 @@ def dbmle(
                     global_scs=global_ints,
                     est_frechet=est_frechet if out_mode == "auxiliary" else None,
                     frechet_scs=fre_scs if out_mode == "auxiliary" else None,
-                    junlee_cis=junlee_cis if out_mode == "auxiliary" else None,   # <-- ADD
+                    imjl_cis=imjl_cis if out_mode == "auxiliary" else None,   # <-- ADD
                 )
                 blocks.append(f"(tied MLE #{idx})\n{this_tbl}")
             mle_tbl = "\n\n".join(blocks)
@@ -1525,7 +1528,7 @@ def dbmle(
                 global_scs=global_ints,
                 est_frechet=est_frechet if out_mode == "auxiliary" else None,
                 frechet_scs=fre_scs if out_mode == "auxiliary" else None,
-                junlee_cis=junlee_cis if out_mode == "auxiliary" else None
+                imjl_cis=imjl_cis if out_mode == "auxiliary" else None
             )
 
         out.update(
