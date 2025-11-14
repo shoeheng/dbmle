@@ -1443,7 +1443,6 @@ def dbmle(
         - "basic"     : exhaustive grid; Standard Stats + MLE + global 95% SCS
         - "auxiliary" : exhaustive grid; includes auxiliary Frechet-based stats
         - "approx"    : fast approximate MLE only (no auxiliaries)
-          (Also accepts the misspelling "axuiliary" as "auxiliary")
     level : float, default 0.95
         Credible-set coverage level
     show_progress : bool, default True
@@ -1461,8 +1460,6 @@ def dbmle(
 
     # normalize output mode
     out_mode = (output or "basic").strip().lower()
-    if out_mode == "axuiliary":  # accept common misspelling per user request
-        out_mode = "auxiliary"
     if out_mode not in {"basic", "auxiliary", "approx"}:
         raise ValueError("output must be one of {'basic','auxiliary','approx'}.")
 
@@ -1627,3 +1624,4 @@ def dbmle_from_ZD(
     meta = result.setdefault("meta", {})
     meta["from_ZD"] = stats
     return result
+
