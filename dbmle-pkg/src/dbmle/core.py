@@ -24,6 +24,8 @@ import math
 import warnings
 from typing import Dict, Tuple, List, Any, Optional
 from tqdm import tqdm
+from scipy.stats import norm   # <-- ADD THIS
+
 
 # A "theta" here is the joint count of (always, complier, defier, never)
 # in that order: (theta11, theta10, theta01, theta00)
@@ -781,6 +783,265 @@ def _fisher_exact_2x2(xI1: int, xI0: int, xC1: int, xC0: int) -> float:
             p_val += p
     return min(p_val, 1.0)
 
+# =====================================================================
+# Jun–Lee principal strata CIs (shares of A, C, D, N)
+# =====================================================================
+
+def solve_IM_critical(delta: float, se_max: float, target_coverage: float,
+                      tol: float = 1e-8) -> float:
+    if se_max <= 0 or delta <= 1e-12:
+        return 0.0
+
+    def f(C):
+        return norm.cdf(C + delta / se_max) - norm.cdf(-C) - target_coverage
+
+    lo, hi = 0.0, 10.0
+    if f(lo) > 0:
+        return 0.0
+    if f(hi) < 0:
+        return hi
+
+    for _ in range(100):
+        mid = 0.5 * (lo + hi)
+        val = f(mid)
+        if val < 0:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def LA(p1: float, p0: float) -> float:
+    return max(0.0, p1 + p0 - 1.0)
+
+
+def UA(p1: float, p0: float) -> float:
+    return min(p1, p0)
+
+
+def theta_bounds_for_type(p1: float, p0: float, type_label: str):
+    a_L = LA(p1, p0)
+    a_U = UA(p1, p0)
+    if type_label == "A":
+        L, U = a_L, a_U
+    elif type_label == "C":
+        L, U = p1 - a_U, p1 - a_L
+    elif type_label == "D":
+        L, U = p0 - a_U, p0 - a_L
+    elif type_label == "N":
+        L, U = 1.0 - p1 - p0 + a_L, 1.0 - p1 - p0 + a_U
+    else:
+        raise ValueError("type_label must be one of 'A','C','D','N'")
+    L = max(0.0, min(1.0, L))
+    U = max(0.0, min(1.0, U))
+    return L, U
+
+
+def gradients_theta_bounds(p1: float, p0: float, type_label: str):
+    t1 = p1 + p0 - 1.0
+    s  = p1 - p0
+
+    if t1 > 0.0:
+        dLA_dp1, dLA_dp0 = 1.0, 1.0
+    else:
+        dLA_dp1, dLA_dp0 = 0.0, 0.0
+
+    if s <= 0.0:
+        dUA_dp1, dUA_dp0 = 1.0, 0.0
+    else:
+        dUA_dp1, dUA_dp0 = 0.0, 1.0
+
+    if type_label == "A":
+        gL_p1, gL_p0 = dLA_dp1, dLA_dp0
+        gU_p1, gU_p0 = dUA_dp1, dUA_dp0
+    elif type_label == "C":
+        gL_p1 = 1.0 - dUA_dp1
+        gL_p0 = 0.0 - dUA_dp0
+        gU_p1 = 1.0 - dLA_dp1
+        gU_p0 = 0.0 - dLA_dp0
+    elif type_label == "D":
+        gL_p1 = 0.0 - dUA_dp1
+        gL_p0 = 1.0 - dUA_dp0
+        gU_p1 = 0.0 - dLA_dp1
+        gU_p0 = 1.0 - dLA_dp0
+    elif type_label == "N":
+        gL_p1 = -1.0 + dLA_dp1
+        gL_p0 = -1.0 + dLA_dp0
+        gU_p1 = -1.0 + dUA_dp1
+        gU_p0 = -1.0 + dUA_dp0
+    else:
+        raise ValueError("type_label must be one of 'A','C','D','N'")
+    return (gL_p1, gL_p0), (gU_p1, gU_p0)
+
+
+def classify_kinks(p1_hat: float, p0_hat: float,
+                   se_t1: float, se_s: float,
+                   bar_alpha: float):
+    """
+    Pretest kinks t1 = p1+p0-1 and s = p1-p0 using bar_alpha.
+    """
+    z = norm.ppf(1.0 - bar_alpha / 4.0)
+
+    t1_hat = p1_hat + p0_hat - 1.0
+    s_hat  = p1_hat - p0_hat
+
+    is_L_pos = (t1_hat - z * se_t1 > 0.0)
+    is_L_neg = (t1_hat + z * se_t1 < 0.0)
+
+    if is_L_pos:
+        lower_branch = "pos"
+    elif is_L_neg:
+        lower_branch = "neg"
+    else:
+        lower_branch = "ambig"
+
+    is_U_neg = (s_hat + z * se_s < 0.0)
+    is_U_pos = (s_hat - z * se_s > 0.0)
+
+    if is_U_neg:
+        upper_branch = "p1"
+    elif is_U_pos:
+        upper_branch = "p0"
+    else:
+        upper_branch = "ambig"
+
+    return lower_branch, upper_branch
+
+
+def principal_strata_ci_junlee(
+    n: int,
+    m: int,
+    xI1: int,
+    xC1: int,
+    alpha: float = 0.05,
+    bar_alpha: float = 0.001,
+    grid_n: int = 101,
+) -> Dict[str, Dict[str, float]]:
+    if not (0 < m < n):
+        raise ValueError("m must be in (0, n)")
+    if not (0 < bar_alpha < alpha < 0.5):
+        raise ValueError("Need 0 < bar_alpha < alpha < 0.5.")
+
+    n1 = m
+    n0 = n - m
+
+    alpha_main = alpha - bar_alpha
+    if alpha_main <= 0:
+        raise ValueError("alpha - bar_alpha must be positive.")
+
+    target_coverage_IM = 1.0 - alpha_main
+
+    p1_hat = xI1 / n1
+    p0_hat = xC1 / n0
+
+    se_p1 = math.sqrt(max(p1_hat * (1.0 - p1_hat) / n1, 0.0))
+    se_p0 = math.sqrt(max(p0_hat * (1.0 - p0_hat) / n0, 0.0))
+
+    se_t1 = math.sqrt(se_p1**2 + se_p0**2)
+    se_s  = se_t1
+
+    lower_branch, upper_branch = classify_kinks(p1_hat, p0_hat, se_t1, se_s, bar_alpha)
+
+    results: Dict[str, Dict[str, float]] = {}
+
+    # --- ambiguous regime: projection CI ---
+    if lower_branch == "ambig" or upper_branch == "ambig":
+        z_rect = norm.ppf(1.0 - alpha_main / 4.0)
+
+        m1 = p1_hat - z_rect * se_p1
+        M1 = p1_hat + z_rect * se_p1
+        m0 = p0_hat - z_rect * se_p0
+        M0 = p0_hat + z_rect * se_p0
+
+        m1, M1 = max(m1, 0.0), min(M1, 1.0)
+        m0, M0 = max(m0, 0.0), min(M0, 1.0)
+
+        def projection_ci(type_label: str):
+            if M1 < m1 or M0 < m0:
+                return theta_bounds_for_type(p1_hat, p0_hat, type_label)
+
+            L_min = float("inf")
+            U_max = -float("inf")
+
+            for i in range(grid_n):
+                p1 = m1 + (M1 - m1) * i / (grid_n - 1)
+                for j in range(grid_n):
+                    p0 = m0 + (M0 - m0) * j / (grid_n - 1)
+                    if not (0.0 <= p1 <= 1.0 and 0.0 <= p0 <= 1.0):
+                        continue
+                    theta_L, theta_U = theta_bounds_for_type(p1, p0, type_label)
+                    L_min = min(L_min, theta_L)
+                    U_max = max(U_max, theta_U)
+
+            L_min = max(0.0, min(1.0, L_min))
+            U_max = max(0.0, min(1.0, U_max))
+            return L_min, U_max
+
+        for t in ["A", "C", "D", "N"]:
+            L, U = projection_ci(t)
+            results[t] = {"lower": L, "upper": U, "regime": "ambig-projection"}
+
+        return results
+
+    # --- smooth regime ---
+    var_p1 = se_p1**2
+    var_p0 = se_p0**2
+
+    for t in ["A", "C", "D", "N"]:
+        theta_L_hat, theta_U_hat = theta_bounds_for_type(p1_hat, p0_hat, t)
+        (gL_p1, gL_p0), (gU_p1, gU_p0) = gradients_theta_bounds(p1_hat, p0_hat, t)
+
+        var_L = gL_p1**2 * var_p1 + gL_p0**2 * var_p0
+        var_U = gU_p1**2 * var_p1 + gU_p0**2 * var_p0
+
+        se_L = math.sqrt(max(var_L, 0.0))
+        se_U = math.sqrt(max(var_U, 0.0))
+
+        if t == "A" and lower_branch == "neg":
+            z_one = norm.ppf(1.0 - alpha_main)
+            L = 0.0
+            U = theta_U_hat + z_one * se_U
+            L = max(0.0, min(1.0, L))
+            U = max(0.0, min(1.0, U))
+            results[t] = {"lower": L, "upper": U, "regime": "smooth-boundary"}
+            continue
+
+        delta_hat = max(theta_U_hat - theta_L_hat, 0.0)
+        se_max = max(se_L, se_U)
+        C_IM = solve_IM_critical(delta_hat, se_max, target_coverage_IM)
+
+        L = theta_L_hat - C_IM * se_L
+        U = theta_U_hat + C_IM * se_U
+        L = max(0.0, min(1.0, L))
+        U = max(0.0, min(1.0, U))
+
+        results[t] = {"lower": L, "upper": U, "regime": "smooth-IM"}
+
+    return results
+
+
+def _junlee_ci_from_counts(
+    n: int,
+    m: int,
+    xI1: int,
+    xC1: int,
+) -> Dict[str, Tuple[float, float]]:
+    """
+    Convenience wrapper: run Jun–Lee CIs at 95% with pretest 0.001,
+    return (lower, upper) for each cell key "theta11",..., in share units.
+    """
+    cis = principal_strata_ci_junlee(
+        n, m, xI1, xC1,
+        alpha=0.05,
+        bar_alpha=0.001,
+    )
+    out: Dict[str, Tuple[float, float]] = {}
+    # map A,C,D,N -> theta11,theta10,theta01,theta00
+    out["theta11"] = (cis["A"]["lower"], cis["A"]["upper"])
+    out["theta10"] = (cis["C"]["lower"], cis["C"]["upper"])
+    out["theta01"] = (cis["D"]["lower"], cis["D"]["upper"])
+    out["theta00"] = (cis["N"]["lower"], cis["N"]["upper"])
+    return out
 
 # =====================================================================
 # formatting helpers
@@ -851,7 +1112,9 @@ def _make_mle_table(
     global_scs: Optional[Dict[str, List[Tuple[int, int]]]] = None,
     est_frechet: Optional[Dict[str, Any]] = None,
     frechet_scs: Optional[Dict[str, Any]] = None,
+    junlee_cis: Optional[Dict[str, Tuple[float, float]]] = None,  # <-- ADD
 ) -> str:
+
     """
     Turn the MLE(s) and all optional supporting sets into a readable
     text block.
@@ -885,6 +1148,11 @@ def _make_mle_table(
         if frechet_scs is None:
             return None
         return frechet_scs.get(key + "_denoms")
+
+    def _get_junlee_for(key: str) -> Optional[Tuple[float, float]]:
+        if junlee_cis is None:
+            return None
+        return junlee_cis.get(key)
 
     def _fmt_single_interval_frac(a: int, b: int, denom: int) -> str:
         if a == b:
@@ -925,9 +1193,11 @@ def _make_mle_table(
         largest_iv: Tuple[int, int],
         g_scs: Optional[List[Tuple[int, int]]],
         est_fr: Optional[List[Tuple[int, int]]],
+        jun_ci: Optional[Tuple[float, float]],              # <-- ADD
         fr_scs: Optional[List[Tuple[int, int]]],
         fr_denoms: Optional[List[int]],
     ) -> List[str]:
+
         blk: List[str] = []
         blk.append(label)
         blk.append(f"  MLE: {mle_count}/{n} = {(mle_count/n)*100:.2f}%")
@@ -950,6 +1220,15 @@ def _make_mle_table(
 
         if est_fr is not None:
             blk.append("  Estimated Frechet Bounds: " + _fmt_union_same_denom(est_fr, n))
+
+        # NEW: Jun–Lee CI line (percentages only)
+        if jun_ci is not None:
+            lo, hi = jun_ci
+            blk.append(
+                "  95% Jun-Lee CI (share): "
+                f"[{lo*100:.2f}%, {hi*100:.2f}%]"
+            )
+
 
         if fr_scs is not None:
             if fr_denoms is not None and len(fr_denoms) == len(fr_scs):
@@ -975,6 +1254,7 @@ def _make_mle_table(
         largest_support["theta11"],
         _get_global_scs_for("theta11"),
         _get_est_frechet_for("theta11"),
+        _get_junlee_for("theta11"),                 # <-- ADD
         _get_frechet_scs_for("theta11"),
         _get_frechet_denoms_for("theta11"),
     )
@@ -986,6 +1266,7 @@ def _make_mle_table(
         largest_support["theta10"],
         _get_global_scs_for("theta10"),
         _get_est_frechet_for("theta10"),
+        _get_junlee_for("theta10"),                 # <-- ADD
         _get_frechet_scs_for("theta10"),
         _get_frechet_denoms_for("theta10"),
     )
@@ -997,6 +1278,7 @@ def _make_mle_table(
         largest_support["theta01"],
         _get_global_scs_for("theta01"),
         _get_est_frechet_for("theta01"),
+        _get_junlee_for("theta01"),                 # <-- ADD
         _get_frechet_scs_for("theta01"),
         _get_frechet_denoms_for("theta01"),
     )
@@ -1008,9 +1290,11 @@ def _make_mle_table(
         largest_support["theta00"],
         _get_global_scs_for("theta00"),
         _get_est_frechet_for("theta00"),
+        _get_junlee_for("theta00"),                 # <-- ADD
         _get_frechet_scs_for("theta00"),
         _get_frechet_denoms_for("theta00"),
     )
+
 
     return "\n".join(lines)
 
@@ -1197,6 +1481,9 @@ def dbmle(
 
     largest_support = _largest_possible_support(n, m, xI1, xC1)
     est_frechet = _estimated_frechet_bounds_discrete(n, m, xI1, xC1)
+    junlee_cis = None
+    if out_mode == "auxiliary":
+        junlee_cis = _junlee_ci_from_counts(n, m, xI1, xC1)
 
     # ================================================================
     # Exhaustive paths ("basic" and "auxiliary")
@@ -1217,13 +1504,14 @@ def dbmle(
             for idx, mle_theta in enumerate(mles, start=1):
                 this_tbl = _make_mle_table(
                     n,
-                    [mle_theta],                         # single MLE per block
+                    [mle_theta],
                     auxiliary=(out_mode == "auxiliary"),
                     method="exhaustive",
                     largest_support=largest_support,
-                    global_scs=global_ints,              # show SCS for exhaustive paths
+                    global_scs=global_ints,
                     est_frechet=est_frechet if out_mode == "auxiliary" else None,
                     frechet_scs=fre_scs if out_mode == "auxiliary" else None,
+                    junlee_cis=junlee_cis if out_mode == "auxiliary" else None,   # <-- ADD
                 )
                 blocks.append(f"(tied MLE #{idx})\n{this_tbl}")
             mle_tbl = "\n\n".join(blocks)
@@ -1237,6 +1525,7 @@ def dbmle(
                 global_scs=global_ints,
                 est_frechet=est_frechet if out_mode == "auxiliary" else None,
                 frechet_scs=fre_scs if out_mode == "auxiliary" else None,
+                junlee_cis=junlee_cis if out_mode == "auxiliary" else None
             )
 
         out.update(
