@@ -136,10 +136,6 @@ Example Output
 Below is a full example of the output printed by `.report()`, resulting from the first example Python script:
 
 ```
-UserWarning: Note: When 'auxiliary=True' is specified with method='approx', the function automatically performs an exhaustive grid search to compute the true MLE and 95% credible set. The MLE is exact as well.
-  res = dbmle(
-Enumerating Joint Distributions: 100%|██████████| 266916/266916 [00:01<00:00, 152926.72Joint Distribution/s]
-
 Standard Statistics
 ----------------------------------------------
 Average Effect              50/61 - 23/54 = 39.37%
@@ -202,6 +198,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
