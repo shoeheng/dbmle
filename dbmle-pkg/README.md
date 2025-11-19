@@ -112,39 +112,22 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
 - **show_progress:** _bool_   
   *Default:* `True`  
-  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant `output="approx"`). 
+  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant when `output="approx"`). 
 
 ----------------------------------------------------------------------
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates the maximum likelihood estimates (MLEs) using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, the appoximation is correct. We also randomly sampled 100 different experiment results for experiments with sample sizes between 500 and 1000, intervention and control not necessarily equally sizes, and find the approximation is correct for all sampled experiment results.
+When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the appoximation is correct.
 
-### Initialization
+The approximation begins by considering three candidate joint distributions:
 
-The approximation algorithm begins by considering three candidate joint distributions. The first is finding the distribution on the "corner" of the estimated Fréchet set with the highest likelihood.  
-It also considers two simple joint distributions:
+- The endpoint of the estimated Fréchet set with the highest likelihood.  
+- A joint distribution with only always-takers and never-takers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(x_{I1}+x_{C1},0,0,x_{I0}+x_{C0})$
+- A joint distribution with only compliers and defiers:
+$(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C1},0)$
 
-- Only always-takers and never-takers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(x_{I1}+x_{C1},0,0,x_{I0}+x_{C0})$
-- Only compliers and defiers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C1},0)$
-
-These provide plausible starting points for the likelihood search. If either the joint dsitribution with only always and never takers or the joint distribution with only compliers and defiers has the highest likelihood, it is chosen as the MLE.
-Otherwise, the algorithm moves to the local cube search.
-
-### Local Cube Search
-
-Around the "corner" of the estimated Fréchet set with the highest likelihood, the algorithm searches a small four-dimensional integer cube centered on it, checking all nearby joint distributions that:
-
-- sum exactly to *n*, and  
-- have nonnegative counts.
-
-Empirically, we find that the maximum $\ell_\inf$ distance between the the true MLE and the highest likelihood Fréchet corner increases at a rate just around $O(\sqrt{n})$ (barring MLEs that consist only of always takers and never takers or compliers and defiers). Accordingly, the cube’s half-width (`delta`) scales at the rate $0.3n^{0.58}$, a scale emprically decided by fitting a power law relating the maximum $\ell_\inf$ distance to the sample size, ensuring the search is both fast and likeliy covers the true MLE.  
-Each candidate’s log-likelihood is evaluated, and the algorithm keeps all points within a small numerical tolerance of the best value.
-
-### Edge Expansion
-
-If the best solution lies on the cube’s boundary, the algorithm performs one larger pass with an expanded cube.  
-This step captures nearby high-likelihood points the first pass might miss without having to exhaustively enumerate every possible combination.
+If either of the two-type joint distributions attains the highest likelihood, it is immediately returned as the MLE. Otherwise, the algorithm performs a local cube search. In this case, we search a small four-dimensional integer cube around the enpoint of the estimated Fréchet set with the highest likelihood. The width of the search increases with sample size. If the distribution with the highest likelihood lies of the boundary of the cube, we search a slightly larger cube. 
 
 ----------------------------------------------------------------------
 Example Output
@@ -219,6 +202,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
