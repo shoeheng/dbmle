@@ -96,32 +96,6 @@ that is, `set python_exec` should have a valid path to python and `version` shou
 
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 
-
-BELOW HERE IS RANDOM STUFF, TO FIGURE OUT TROUBLE SHOOTING
-
-to set your Python path in Stata. Once your path is set, run
-```stata
-python:
-from dbmle import dbmle
-res = dbmle(2, 1, 1, 2, method="exhaustive", auxiliary=True)
-print(res.report())
-end
-```
-
-Note that if Stata says "restart required", run:
-
-    exit, clear
-
-and reopen Stata.
-
-If this doesn't work, find the directory where the dbmle.exe is kept and create a global. It is typically found under the "Scripts" folder in Python. For example,
-
-    global dbmle "C:\PATH\TO\PYTHON\Scripts\dbmle.exe"
-
-You can then run the above code.
-
-END SECTION WITH MATERIALS TO POSSIBLY BE INCLUDED
-
 ----------------------------------------------------------------------
 Parameters
 ----------------------------------------------------------------------
@@ -245,6 +219,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
