@@ -149,7 +149,7 @@ To get the basic output, in Python, you can run
 from dbmle import dbmle
 
 # (xI1, xI0, xC1, xC0) = (50, 11, 23, 31)
-res = dbmle(50, 11, 23, 31, output="basic")
+res = dbmle(50, 11, 23, 31)
 print(res.report())
 ```
 or equivalently, in stata,
@@ -165,7 +165,7 @@ end
 and in the command line interface,
 
 ```
-dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --output
+dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 ```
 
 All will give the same output:
@@ -309,6 +309,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
