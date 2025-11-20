@@ -228,35 +228,6 @@ dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --output auxiliary
 which will all yield the same output:
 
 ```
-Standard Statistics
-----------------------------------------------
-Average Effect              50/61 - 23/54 = 39.37%
-95% Confidence Interval     [23.03%, 55.72%]
-Fisher's Exact Test p-value 1.552e-05
-Intervention Takeup Rate    50/61 = 81.97%
-Control Takeup Rate         23/54 = 42.59%
-Sample Size                  115
-
-
-Christy and Kowalski Design-Based Maximum Likelihood Estimates
-------------------------------------------------------------------------------------
-Always takers
-  MLE: 28/115 = 24.35%
-  95% Smallest Credible Set: [0,63]/115 = [0.00%, 54.78%]
-
-Compliers
-  MLE: 66/115 = 57.39%
-  95% Smallest Credible Set: [23,81]/115 = [20.00%, 70.43%]
-
-Defiers
-  MLE: 21/115 = 18.26%
-  95% Smallest Credible Set: [0,34]/115 = [0.00%, 29.57%]
-
-Never takers
-  MLE: 0/115 = 0.00%
-  95% Smallest Credible Set: [0,32]/115 = [0.00%, 27.83%]
-```
-
 Christy and Kowalski Design-Based Maximum Likelihood Estimates and Auxiliary Statistics
 ------------------------------------------------------------------------------------
 Always takers
@@ -289,7 +260,7 @@ Never takers
 
 ```
 
-Replace `"auxiliary"` with "`approx`" to use the fast MLEapproximation, which will return the output
+Replace `"auxiliary"` with "`approx`" to use the fast MLE approximation, which will return the output
 
 ```
 Standard Statistics
@@ -338,6 +309,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
