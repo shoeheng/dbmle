@@ -1,24 +1,4 @@
 # src/dbmle/core.py
-# ---------------------------------------------------------------------
-# DBMLE: Design-Based Maximum Likelihood + optional supporting stats
-#
-# inputs (in this order): xI1, xI0, xC1, xC0
-#
-# method:
-#   "approx"     -> fast approximation of MLE
-#   "exhaustive" -> exhaustive grid search
-#
-# auxiliary:
-#   False        -> MLE and (if exhaustive) smallest credible set
-#   True         -> All auxiliary statistics
-#
-# Output: two text blocks:
-#   1. "Standard Statistics"
-#   2. "Design-Based Maximum Likelihood Estimates"
-#      or "Design-Based Maximum Likelihood Estimates and Auxiliary Statistics"
-#
-# Requires: tqdm   (pip install tqdm)
-# ---------------------------------------------------------------------
 
 import math
 import warnings
@@ -68,11 +48,10 @@ def _loglik(
     xI0 = m - xI1
     xC0 = c - xC1
 
-    # basic feasibility: do we have enough would-not-take types to match zeros?
+    # basic feasibility
     if t01 + t00 < xI0 or t10 + t00 < xC0:
         return -math.inf
 
-    # compute inner loop bounds for how many always-takers show up in I=1
     lo = max(
         0,
         xI1 - t10,
@@ -88,7 +67,6 @@ def _loglik(
     if lo > hi:
         return -math.inf
 
-    # common log binomial term (randomization)
     log_choose = _logC_scalar(n, m)
 
     # we sum over all consistent allocations into the intervention arm
@@ -114,14 +92,12 @@ def _loglik(
             + _logC_scalar(t00, I00)
         )
 
-        # log-sum-exp, but done by hand to avoid underflow
         if logL < term:
             logL, term = term, logL
         if term > -math.inf:
             logL = logL + math.log1p(math.exp(term - logL))
 
     return logL - log_choose
-
 
 # =====================================================================
 # validation
@@ -146,7 +122,7 @@ def _frechet_continuous_from_data(
     n: int, m: int, xI1: int, xC1: int
 ) -> Tuple[float, float, float, float, float, float, float, float]:
     """
-    Frechet bounds, treating the line-sum constraints as continuous.
+    Frechet bounds.
     Returns lower/upper for each of the 4 types.
     """
     c = n - m
@@ -172,7 +148,7 @@ def _corners_float(
     n: int, m: int, xI1: int, xC1: int
 ) -> Tuple[Tuple[float, ...], Tuple[float, ...]]:
     """
-    Pick the two opposite "corners" of the continuous Frechet region that
+    Pick the two opposite "corners" of the continuous Frechet set that
     are relevant for the observed data. These get integerized later.
     """
     L11, U11, L10, U10, L01, U01, L00, U00 = _frechet_continuous_from_data(
@@ -272,7 +248,7 @@ def _format_union(intervals: List[Tuple[int, int]]) -> str:
 
 
 # =====================================================================
-# Frechet-marginal 95% SCS (returns also per-interval denoms)
+# Frechet 95% SCS
 # =====================================================================
 def _frechet_marginal_scs(
     n: int, m: int, xI1: int, xC1: int, level: float = 0.95
@@ -344,7 +320,6 @@ def _frechet_marginal_scs(
     int01 = _disjoint_intervals(vals01)
     int00 = _disjoint_intervals(vals00)
 
-    # for this Frechet-based SCS, the denominator is always n
     denoms11 = [n] * len(int11)
     denoms10 = [n] * len(int10)
     denoms01 = [n] * len(int01)
@@ -382,7 +357,7 @@ def _delta_from_n(n: int) -> int:
 
 
 def _delta_expand_from_n(n: int) -> int:
-    """Slightly bigger cube for a one-shot expansion if we hit an edge."""
+    """Slightly bigger cube for an expansion if we hit an edge."""
     base = _delta_from_n(n)
     return int(math.ceil(max(base, 0.30 * (n ** 0.58))))
 
@@ -463,7 +438,6 @@ def fast_mle(
 
     init_best = max(ll for _, ll in initial)
 
-    # ---- NEW: Early-exit if a two-type candidate is among the best seeds ----
     two_type_mles: List[Theta] = []
     if abs(ll_atnt - init_best) <= tol:
         two_type_mles.append(theta_atnt)
@@ -483,9 +457,8 @@ def fast_mle(
                 "reason": "two-type seed attains initial maximum",
             },
         )
-    # ---- END NEW ----------------------------------------------------------------
-
-    # Otherwise proceed with the usual local cube search
+        
+    # Otherwise proceed with the usual local cube
     seeds = sorted({t for (t, ll) in initial if ll >= init_best - tol})
 
     global_best_ll = -math.inf
@@ -624,7 +597,7 @@ def _exhaustive_grid(
     tol = 1e-15
     mles = [thetas[i] for i, ll in enumerate(lls) if abs(ll - max_ll) <= tol]
 
-    # posterior weights over the feasible theta's
+    # posterior weights
     weights = [math.exp(ll - max_ll) for ll in lls]
     Z = sum(weights)
     post = [w / Z for w in weights]
@@ -645,7 +618,6 @@ def _exhaustive_grid(
     credible_thetas = sorted_thetas[: cutoff_idx + 1]
     credible_post = sorted_post[: cutoff_idx + 1]
 
-    # marginal intervals
     vals11 = sorted({t[0] for t in credible_thetas})
     vals10 = sorted({t[1] for t in credible_thetas})
     vals01 = sorted({t[2] for t in credible_thetas})
@@ -683,7 +655,7 @@ def _largest_possible_support(
 ) -> Dict[str, Tuple[int, int]]:
     """
     For each type, return the broadest possible interval of counts that
-    could ever be compatible with this observed 2x2 table.
+    could ever be compatible with data
     """
     c = n - m
     return {
@@ -787,7 +759,7 @@ def _fisher_exact_2x2(xI1: int, xI0: int, xC1: int, xC0: int) -> float:
     return min(p_val, 1.0)
 
 # =====================================================================
-# Jun–Lee principal strata CIs (shares of A, C, D, N)
+# Imbens-Manski Jun–Lee principal strata CIs (shares of A, C, D, N)
 # =====================================================================
 
 def solve_IM_critical(delta: float, se_max: float, target_coverage: float,
@@ -1119,8 +1091,7 @@ def _make_mle_table(
 ) -> str:
 
     """
-    Turn the MLE(s) and all optional supporting sets into a readable
-    text block.
+    Turn the MLE(s) and statistics into a readable text block.
     """
     if mle_list:
         t11, t10, t01, t00 = mle_list[0]
@@ -1196,7 +1167,7 @@ def _make_mle_table(
         largest_iv: Tuple[int, int],
         g_scs: Optional[List[Tuple[int, int]]],
         est_fr: Optional[List[Tuple[int, int]]],
-        jun_ci: Optional[Tuple[float, float]],              # <-- ADD
+        jun_ci: Optional[Tuple[float, float]],             
         fr_scs: Optional[List[Tuple[int, int]]],
         fr_denoms: Optional[List[int]],
     ) -> List[str]:
@@ -1224,7 +1195,7 @@ def _make_mle_table(
         if est_fr is not None:
             blk.append("  Estimated Frechet Bounds: " + _fmt_union_same_denom(est_fr, n))
 
-        # NEW: Jun–Lee CI line (percentages only)
+        # Imbens-Manski Jun–Lee CI line (percentages only)
         if jun_ci is not None:
             lo, hi = jun_ci
             blk.append(
@@ -1318,7 +1289,6 @@ class DBMLEResult(dict):
 def _try_parse_binary(v) -> Optional[int]:
     """
     Return 0 or 1 if v represents exactly binary {0,1}; otherwise return None.
-    Accepts: bool, int in {0,1}, float in {0.0,1.0}, str in {"0","1"} (with whitespace).
     """
     if isinstance(v, bool):
         return int(v)
@@ -1336,14 +1306,15 @@ def _try_parse_binary(v) -> Optional[int]:
     return None  # unsupported type
 
 
-# ── STRICT sanitization: reject any invalidity, no coercion, no warnings ────────
+# ──sanitization ────────
+
 def _sanitize_ZD(
     Z,
     D,
     invalid_report_limit: int = 10,   # how many bad indices to show in the error
 ) -> Tuple[int, int, int, int, Dict[str, Any]]:
     """
-    Strictly validate + aggregate (Z, D) into 2x2 counts.
+    Strictly validate + aggregate (Z, D) into counts.
 
     Behavior:
       - Raises ValueError if Z or D is None, lengths differ, or any entry is not exactly binary.
@@ -1398,7 +1369,7 @@ def _sanitize_ZD(
             "Values must be exactly 0/1 (bool/int), 0.0/1.0 (finite float), or '0'/'1' (str)."
         )
 
-    # sanity: both arms must be non-empty
+    # both arms must be non-empty
     I = xI1 + xI0
     C = xC1 + xC0
     if I == 0 or C == 0:
@@ -1410,9 +1381,9 @@ def _sanitize_ZD(
     stats = {
         "total": total,
         "used": used,
-        "invalid_count": 0,          # explicit: strict mode rejects invalids
+        "invalid_count": 0,          
         "invalid_report_limit": invalid_report_limit,
-        "policy": "strict",          # for transparency in meta
+        "policy": "strict",          
     }
     return xI1, xI0, xC1, xC0, stats
 
@@ -1421,14 +1392,14 @@ def _sanitize_ZD(
 
 
 # =====================================================================
-# main command (NEW API: output = {'basic','auxiliary','approx'})
+# main command
 # =====================================================================
 def dbmle(
     xI1: int,
     xI0: int,
     xC1: int,
     xC0: int,
-    output: str = "basic",          # NEW unified interface
+    output: str = "basic",          
     level: float = 0.95,
     show_progress: bool = True,
 ) -> DBMLEResult:
@@ -1438,11 +1409,11 @@ def dbmle(
     Parameters
     ----------
     xI1, xI0, xC1, xC0 : int
-        2x2 counts (intervention/control by take-up)
+        data (intervention/control by take-up)
     output : {"basic","auxiliary","approx"}, default "basic"
         - "basic"     : exhaustive grid; Standard Stats + MLE + global 95% SCS
-        - "auxiliary" : exhaustive grid; includes auxiliary Frechet-based stats
-        - "approx"    : fast approximate MLE only (no auxiliaries)
+        - "auxiliary" : exhaustive grid; includes auxiliary stats
+        - "approx"    : fast approximate MLE only
     level : float, default 0.95
         Credible-set coverage level
     show_progress : bool, default True
@@ -1493,7 +1464,6 @@ def dbmle(
         mles = grid["mles"]
         global_ints = grid["intervals"]
 
-        # Only build the Frechet-internal SCS when "auxiliary"
         fre_scs = _frechet_marginal_scs(n, m, xI1, xC1, level=level) if out_mode == "auxiliary" else None
 
         std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
@@ -1547,7 +1517,7 @@ def dbmle(
     # ================================================================
     # Approx path ("approx")
     # ================================================================
-    # (old: method="approx", auxiliary=False)
+    
     mles_fast, ll_fast, meta_fast = fast_mle(n, m, xI1, xC1, allow_one_shot_expand=True)
     out["mle"] = {"mle_list": mles_fast, "max_loglik": ll_fast}
     out["meta"]["fast_mle"] = meta_fast
@@ -1584,7 +1554,7 @@ def dbmle(
 
 
 # =====================================================================
-# dbmle_from_ZD (STRICT; no invalid_policy / warn_on_invalid)
+# dbmle_from_ZD
 # =====================================================================
 def dbmle_from_ZD(
     Z: List[int],
@@ -1594,11 +1564,10 @@ def dbmle_from_ZD(
     show_progress: bool = True,
 ) -> DBMLEResult:
     """
-    Strict version: aggregate (Z, D) to counts and run dbmle with `output`.
+    Aggregate (Z, D) to counts and run dbmle with `output`.
 
     - Raises on any data issue (length mismatch, missing/NaN, non-binary entries,
       or empty arm after parsing).
-    - No coercion, no dropping, no warnings.
 
     Parameters
     ----------
@@ -1620,8 +1589,8 @@ def dbmle_from_ZD(
         show_progress=show_progress,
     )
 
-    # keep a transparent note that strict parsing was used
     meta = result.setdefault("meta", {})
     meta["from_ZD"] = stats
     return result
+
 
