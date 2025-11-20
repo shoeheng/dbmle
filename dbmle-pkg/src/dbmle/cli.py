@@ -2,7 +2,6 @@
 
 import argparse
 
-# Import the public API
 from dbmle.core import dbmle
 
 
@@ -15,13 +14,11 @@ def main():
         )
     )
 
-    # Required 2x2 counts
     parser.add_argument("--xI1", type=int, required=True, help="Takeup in Intervention")
     parser.add_argument("--xI0", type=int, required=True, help="No Takeup in Intervention")
     parser.add_argument("--xC1", type=int, required=True, help="Takeup in Control")
     parser.add_argument("--xC0", type=int, required=True, help="No Takeup in Control")
 
-    # Unified output mode
     parser.add_argument(
         "--output",
         choices=["basic", "auxiliary", "approx"],  
@@ -34,7 +31,6 @@ def main():
         ),
     )
 
-    # Credible set level
     parser.add_argument(
         "--level",
         type=float,
@@ -42,7 +38,6 @@ def main():
         help="Credible-set level (default: 0.95).",
     )
 
-    # Progress bar toggle
     parser.add_argument(
         "--no-progress",
         action="store_true",
@@ -51,7 +46,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Run the estimator with the unified interface
     res = dbmle(
         args.xI1,
         args.xI0,
@@ -62,9 +56,9 @@ def main():
         show_progress=not args.no_progress,
     )
 
-    # Print the human-readable report
     print(res.report())
 
 
 if __name__ == "__main__":
     main()
+
