@@ -106,6 +106,8 @@ python:
 end
 ```
 
+you can find more information about using Python in Stata here: https://www.stata.com/python/
+
 ----------------------------------------------------------------------
 Parameters
 ----------------------------------------------------------------------
@@ -318,6 +320,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
