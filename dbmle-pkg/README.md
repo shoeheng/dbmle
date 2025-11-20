@@ -260,7 +260,7 @@ Never takers
 
 ```
 
-Replace `"auxiliary"` with "`approx`" to use the fast MLE approximation, which will return the output
+Replace `"auxiliary"` with `"approx"` to use the fast MLE approximation, which will return the output
 
 ```
 Standard Statistics
@@ -309,6 +309,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
