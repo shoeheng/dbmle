@@ -152,7 +152,7 @@ from dbmle import dbmle
 res = dbmle(50, 11, 23, 31)
 print(res.report())
 ```
-or equivalently, in stata,
+or equivalently in Stata,
 
 ```
 python:
@@ -309,6 +309,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
