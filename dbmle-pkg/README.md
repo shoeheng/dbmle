@@ -228,6 +228,15 @@ dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --output auxiliary
 which will all yield the same output:
 
 ```
+Standard Statistics
+----------------------------------------------
+Average Effect              50/61 - 23/54 = 39.37%
+95% Confidence Interval     [23.03%, 55.72%]
+Fisher's Exact Test p-value 1.552e-05
+Intervention Takeup Rate    50/61 = 81.97%
+Control Takeup Rate         23/54 = 42.59%
+Sample Size                  115
+
 Christy and Kowalski Design-Based Maximum Likelihood Estimates and Auxiliary Statistics
 ------------------------------------------------------------------------------------
 Always takers
@@ -309,6 +318,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
