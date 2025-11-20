@@ -96,6 +96,16 @@ that is, `set python_exec` should have a valid path to python and `version` shou
 
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 
+You can also use Python in a Stata script by starting the script with `python:` and ending with `end`:
+
+```
+python:
+    from dbmle import dbmle
+    res = dbmle(51, 11, 23, 31)
+    print(res.report())
+end
+```
+
 ----------------------------------------------------------------------
 Parameters
 ----------------------------------------------------------------------
@@ -130,10 +140,35 @@ $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C
 If either of the two-type joint distributions attains the highest likelihood, it is immediately returned as the MLE. Otherwise, the algorithm performs a local cube search. In this case, we search a small four-dimensional integer cube around the enpoint of the estimated Fréchet set with the highest likelihood. The width of the search increases with sample size. If the distribution with the highest likelihood lies of the boundary of the cube, we search a slightly larger cube. 
 
 ----------------------------------------------------------------------
-Example Output
+Example Usages
 ----------------------------------------------------------------------
 
-Below is a full example of the output printed by `.report()`, resulting from the first example Python script:
+To get the basic output, in Python, you can run 
+
+```
+from dbmle import dbmle
+
+# (xI1, xI0, xC1, xC0) = (50, 11, 23, 31)
+res = dbmle(50, 11, 23, 31, output="basic")
+print(res.report())
+```
+or equivalently, in stata,
+
+```
+python:
+    from dbmle import dbmle
+    res = dbmle(51, 11, 23, 31)
+    print(res.report())
+end
+```
+
+and in the command line interface,
+
+```
+dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --output
+```
+
+All will give the same output:
 
 ```
 Standard Statistics
@@ -145,6 +180,82 @@ Intervention Takeup Rate    50/61 = 81.97%
 Control Takeup Rate         23/54 = 42.59%
 Sample Size                  115
 
+
+Christy and Kowalski Design-Based Maximum Likelihood Estimates
+------------------------------------------------------------------------------------
+Always takers
+  MLE: 28/115 = 24.35%
+  95% Smallest Credible Set: [0,63]/115 = [0.00%, 54.78%]
+
+Compliers
+  MLE: 66/115 = 57.39%
+  95% Smallest Credible Set: [23,81]/115 = [20.00%, 70.43%]
+
+Defiers
+  MLE: 21/115 = 18.26%
+  95% Smallest Credible Set: [0,34]/115 = [0.00%, 29.57%]
+
+Never takers
+  MLE: 0/115 = 0.00%
+  95% Smallest Credible Set: [0,32]/115 = [0.00%, 27.83%]
+```
+
+To get the auxiliary table output, you can run
+
+```
+from dbmle import dbmle
+
+res = dbmle(50, 11, 23, 31, output="auxiliary")
+print(res.report())
+```
+
+or in Stata,
+
+```
+python:
+    from dbmle import dbmle
+    res = dbmle(51, 11, 23, 31, output="auxiliary")
+    print(res.report())
+end
+```
+
+or in the command line interface
+
+```
+dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --output auxiliary
+```
+
+which will all yield the same output:
+
+```
+Standard Statistics
+----------------------------------------------
+Average Effect              50/61 - 23/54 = 39.37%
+95% Confidence Interval     [23.03%, 55.72%]
+Fisher's Exact Test p-value 1.552e-05
+Intervention Takeup Rate    50/61 = 81.97%
+Control Takeup Rate         23/54 = 42.59%
+Sample Size                  115
+
+
+Christy and Kowalski Design-Based Maximum Likelihood Estimates
+------------------------------------------------------------------------------------
+Always takers
+  MLE: 28/115 = 24.35%
+  95% Smallest Credible Set: [0,63]/115 = [0.00%, 54.78%]
+
+Compliers
+  MLE: 66/115 = 57.39%
+  95% Smallest Credible Set: [23,81]/115 = [20.00%, 70.43%]
+
+Defiers
+  MLE: 21/115 = 18.26%
+  95% Smallest Credible Set: [0,34]/115 = [0.00%, 29.57%]
+
+Never takers
+  MLE: 0/115 = 0.00%
+  95% Smallest Credible Set: [0,32]/115 = [0.00%, 27.83%]
+```
 
 Christy and Kowalski Design-Based Maximum Likelihood Estimates and Auxiliary Statistics
 ------------------------------------------------------------------------------------
@@ -178,6 +289,35 @@ Never takers
 
 ```
 
+Replace `"auxiliary"` with "`approx`" to use the fast MLEapproximation, which will return the output
+
+```
+Standard Statistics
+----------------------------------------------
+Average Effect              50/61 - 23/54 = 39.37%
+95% Confidence Interval     [23.03%, 55.72%]
+Fisher's Exact Test p-value 1.552e-05
+Intervention Takeup Rate    50/61 = 81.97%
+Control Takeup Rate         23/54 = 42.59%
+Sample Size                  115
+
+
+Christy and Kowalski Design-Based Maximum Likelihood Estimates
+------------------------------------------------------------------------------------
+Always takers
+  MLE: 28/115 = 24.35%
+
+Compliers
+  MLE: 66/115 = 57.39%
+
+Defiers
+  MLE: 21/115 = 18.26%
+
+Never takers
+  MLE: 0/115 = 0.00%
+```
+
+
 ----------------------------------------------------------------------
 License
 ----------------------------------------------------------------------
@@ -198,6 +338,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
