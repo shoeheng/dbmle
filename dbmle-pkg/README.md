@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts. Note that this design-based likelihood works only for experiments using a Bernoulli randomized design or a completely randomized design. We also provide directions to use this package in Stata. 
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts.This design-based likelihood works for experiments using a Bernoulli randomized design or a completely randomized design. We also provide directions to use this package in Stata. 
 
 ----------------------------------------------------------------------
 Installation
@@ -128,7 +128,7 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
         Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
   
-  Where `7%|▋         |` is a visual indicator of how many dsitributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left for the entire code, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based off the history of this value).
+  Where `7%|▋         |` is a visual indicator of how many dsitributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left to complete the grid search, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based off the history of this value).
 
 ----------------------------------------------------------------------
 Note on Approximation
@@ -324,6 +324,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
