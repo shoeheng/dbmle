@@ -115,7 +115,7 @@ Parameters
 Aisde from the data input, each command supports the following parameters:
 
 - **output:** `"basic"`, `"auxiliary"`, _or_ `"approx"`  
-  *Default:* `"approx"`  
+  *Default:* `"basic"`  
 What statistics are to be calculated and displayed. `"basic"` performs an exhaustive grid search and returns the MLE(s) along with the smallest credible set. `"auxiliary`" returns the statistics that `"basic"` returns along with the largest possible support, estimated Frechet bounds, and the smallest credible set conditional on being within the estimated Frechet set. `"approx"` uses a significantly faster approximation algorithm to calculate the MLE(s) and only returns the MLE(s). All three return a standard statistics table as well.
   
 - **level:** _float_  
@@ -124,7 +124,11 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
 - **show_progress:** _bool_   
   *Default:* `True`  
-  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant when `output="approx"`). 
+  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant when `output="approx"`). The `tqdm` bar looks as follows:
+
+        Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
+  
+  Where `7%|▋         |` is a visual indicator of how many dsitributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left for the entire code, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based off the history of this value).
 
 ----------------------------------------------------------------------
 Note on Approximation
@@ -320,6 +324,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
