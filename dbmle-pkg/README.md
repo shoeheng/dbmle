@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts.This design-based likelihood works for experiments using a Bernoulli randomized design or a completely randomized design. We also provide directions to use this package in Stata. 
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts. This design-based likelihood works for experiments using a Bernoulli randomized design or a completely randomized design. We also provide directions to use this package in Stata. 
 
 ----------------------------------------------------------------------
 Installation
@@ -134,12 +134,12 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always-takers, compliers, defiers, and never-takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the appoximation is correct.
+When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always takers, compliers, defiers, and never takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the appoximation is correct.
 
 The approximation begins by considering three candidate joint distributions:
 
 - The endpoint of the estimated Fréchet set with the highest likelihood.  
-- A joint distribution with only always-takers and never-takers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(x_{I1}+x_{C1},0,0,x_{I0}+x_{C0})$
+- A joint distribution with only always takers and never takers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(x_{I1}+x_{C1},0,0,x_{I0}+x_{C0})$
 - A joint distribution with only compliers and defiers:
 $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C1},0)$
 
@@ -324,6 +324,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
