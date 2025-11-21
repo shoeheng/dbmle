@@ -5,13 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dbmle"
 version = "0.0.1"
-description = "Design-based MLE for always taker, complier, defier, never taker counts from Z,D or 2x2 tables."
+description = "Design-based MLE to estimate always taker, complier, defier, never taker counts."
 readme = "README.md"
 requires-python = ">=3.6"
 license = { text = "MIT" }
 authors = [
-  { name = "Your Name", email = "you@example.com" },
-  { name = "Other Name", email = "other@example.com"}
+  { name = "Shuheng Zhang", email = "zshuheng@umich.edu" },
 ]
 dependencies = [
   "tqdm>=4.0",
@@ -19,8 +18,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourname/dbmle"
-Issues = "https://github.com/yourname/dbmle/issues"
+Homepage = "https://github.com/shoeheng/dbmle"
+Issues = "https://github.com/shoeheng/dbmle/issues"
 
 [project.scripts]
 dbmle = "dbmle.cli:main"
@@ -30,6 +29,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
 
 
 
