@@ -308,13 +308,6 @@ Never takers
 * MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)
 ```
 
-
-----------------------------------------------------------------------
-License
-----------------------------------------------------------------------
-
-License information here.
-
 ----------------------------------------------------------------------
 Project Links
 ----------------------------------------------------------------------
@@ -338,6 +331,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
 }
 
 ```
+
 
 
 
