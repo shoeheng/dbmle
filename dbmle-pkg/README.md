@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025). The package is compatible with experiments with either a Bernoulli randomized design or a completely randomized design, and in this case, results are exact. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025). The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
 
 ----------------------------------------------------------------------
 Installation
@@ -73,7 +73,7 @@ Below is a guide to using Python within Stata. The first step is installing Pyth
 
 ### 1. Install Python
 
-Go to https://www.python.org/downloads/ and download the latest Python installer for your operating system. run the installer and check the option "Add Python to PATH" after running the installer.
+Go to https://www.python.org/downloads/ and download the latest Python installer for your operating system. Run the installer and check the option "Add Python to PATH" after running the installer.
 
 ### 2. Open Stata and tell Stata how to use Python
 
@@ -93,7 +93,7 @@ You should get an output similar to
       architecture         64-bit
       library path         /.../lib64/libpython3.12.so.1.0
 
-that is, `set python_exec` should have a valid path to python and `version` should be 3.9 or greater. Once this is done, `dbmle` can be used directly in the command line of stata by typing a command like 
+that is, `set python_exec` should have a valid path to python and `version` should be 3.9 or greater. Once this is done, `dbmle` can be used directly in the command line of Stata by typing a command like 
 
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 
@@ -107,17 +107,17 @@ python:
 end
 ```
 
-you can find more information about using Python in Stata here: https://www.stata.com/python/
+You can find more information about using Python in Stata here: https://www.stata.com/python/
 
 ----------------------------------------------------------------------
 Parameters
 ----------------------------------------------------------------------
 
-Aisde from the data input, each command supports the following parameters:
+Aside from the data input, each command supports the following parameters:
 
 - **output:** `"basic"`, `"auxiliary"`, _or_ `"approx"`  
   *Default:* `"basic"`  
-What statistics are to be calculated and displayed. `"basic"` performs an exhaustive grid search and returns the MLE(s) along with the smallest credible set. `"auxiliary`" returns the statistics that `"basic"` returns along with the largest possible support, estimated Frechet bounds, and the smallest credible set conditional on being within the estimated Frechet set. `"approx"` uses a significantly faster approximation algorithm to calculate the MLE(s) and only returns the MLE(s). All three return a standard statistics table as well.
+What statistics are to be calculated and displayed. `"basic"` performs an exhaustive grid search and returns the MLE(s) along with the smallest credible set. `"auxiliary`" returns the statistics that `"basic"` returns along with the largest possible support, estimated Fréchet bounds, and the smallest credible set conditional on being within the estimated Fréchet set. `"approx"` uses a significantly faster approximation algorithm to calculate the MLE(s) and only returns the MLE(s). All three return a standard statistics table as well.
   
 - **level:** _float_  
   *Default:* `0.95`  
@@ -129,7 +129,7 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
         Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
   
-  Where `7%|▋         |` is a visual indicator of how many dsitributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left to complete the grid search, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based off the history of this value).
+  Where `7%|▋         |` is a visual indicator of how many distributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left to complete the grid search, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based on the history of this value).
 
 Note that there is no parameter for the design of the randomization (Bernoulli randomized or completely randomized) since the results are the same, as their respective design-based likelihoods are proportional to each other.
 
@@ -137,7 +137,7 @@ Note that there is no parameter for the design of the randomization (Bernoulli r
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always takers, compliers, defiers, and never takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the appoximation is correct.
+When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always takers, compliers, defiers, and never takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the approximation is correct.
 
 The approximation begins by considering three candidate joint distributions:
 
@@ -146,7 +146,7 @@ The approximation begins by considering three candidate joint distributions:
 - A joint distribution with only compliers and defiers:
 $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C1},0)$
 
-If either of the two-type joint distributions attains the highest likelihood, it is immediately returned as the MLE. Otherwise, the algorithm performs a local cube search. In this case, we search a small four-dimensional integer cube around the enpoint of the estimated Fréchet set with the highest likelihood. The width of the search increases with sample size. If the distribution with the highest likelihood lies of the boundary of the cube, we search a slightly larger cube. 
+If either of the two-type joint distributions attains the highest likelihood, it is immediately returned as the MLE. Otherwise, the algorithm performs a local cube search. In this case, we search a small four-dimensional integer cube around the endpoint of the estimated Fréchet set with the highest likelihood. The width of the search increases with sample size. If the distribution with the highest likelihood lies on the boundary of the cube, we search a slightly larger cube. 
 
 ----------------------------------------------------------------------
 Example Usages
@@ -331,55 +331,3 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
 }
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
