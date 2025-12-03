@@ -1524,6 +1524,7 @@ def dbmle(
 
     std_tbl = _make_standard_stats_table(xI1, xI0, xC1, xC0, n, m, c)
 
+
     if len(mles_fast) > 1:
         blocks2: List[str] = []
         for idx, mle_theta in enumerate(mles_fast, start=1):
@@ -1535,7 +1536,14 @@ def dbmle(
                 largest_support=largest_support,
             )
             blocks2.append(f"(tied MLE #{idx})\n{this_tbl}")
+
         mle_tbl = "\n\n".join(blocks2)
+
+        mle_tbl += (
+            "\n\nNOTE: The MLE estimate is approximated using a faster local grid search, "
+            "information on which can be found in the README."
+        )
+
     else:
         mle_tbl = _make_mle_table(
             n,
@@ -1543,6 +1551,11 @@ def dbmle(
             auxiliary=False,
             method="approx",
             largest_support=largest_support,
+        )
+
+        mle_tbl += (
+            "\n\nNOTE: The MLE estimate is approximated using a faster method, "
+            "information on which can be found in the README."
         )
 
     out["report"] = "\n" + std_tbl + "\n\n" + mle_tbl
@@ -1592,5 +1605,4 @@ def dbmle_from_ZD(
     meta = result.setdefault("meta", {})
     meta["from_ZD"] = stats
     return result
-
 
