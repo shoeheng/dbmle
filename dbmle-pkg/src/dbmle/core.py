@@ -457,7 +457,7 @@ def fast_mle(
                 "reason": "two-type seed attains initial maximum",
             },
         )
-        
+
     # Otherwise proceed with the usual local cube
     seeds = sorted({t for (t, ll) in initial if ll >= init_best - tol})
 
@@ -1098,8 +1098,13 @@ def _make_mle_table(
     else:
         t11 = t10 = t01 = t00 = 0
 
+
     if not auxiliary:
-        title = "Christy and Kowalski Design-Based Maximum Likelihood Estimates"
+        if method == "approx":
+            title = "Christy and Kowalski Design-Based Maximum Likelihood Estimates*"
+        else:
+            title = "Christy and Kowalski Design-Based Maximum Likelihood Estimates"
+
     else:
         title = "Christy and Kowalski Design-Based Maximum Likelihood Estimates and Auxiliary Statistics"
 
@@ -1167,7 +1172,7 @@ def _make_mle_table(
         largest_iv: Tuple[int, int],
         g_scs: Optional[List[Tuple[int, int]]],
         est_fr: Optional[List[Tuple[int, int]]],
-        jun_ci: Optional[Tuple[float, float]],             
+        jun_ci: Optional[Tuple[float, float]],
         fr_scs: Optional[List[Tuple[int, int]]],
         fr_denoms: Optional[List[int]],
     ) -> List[str]:
@@ -1381,9 +1386,9 @@ def _sanitize_ZD(
     stats = {
         "total": total,
         "used": used,
-        "invalid_count": 0,          
+        "invalid_count": 0,
         "invalid_report_limit": invalid_report_limit,
-        "policy": "strict",          
+        "policy": "strict",
     }
     return xI1, xI0, xC1, xC0, stats
 
@@ -1399,7 +1404,7 @@ def dbmle(
     xI0: int,
     xC1: int,
     xC0: int,
-    output: str = "basic",          
+    output: str = "basic",
     level: float = 0.95,
     show_progress: bool = True,
 ) -> DBMLEResult:
@@ -1517,7 +1522,7 @@ def dbmle(
     # ================================================================
     # Approx path ("approx")
     # ================================================================
-    
+
     mles_fast, ll_fast, meta_fast = fast_mle(n, m, xI1, xC1, allow_one_shot_expand=True)
     out["mle"] = {"mle_list": mles_fast, "max_loglik": ll_fast}
     out["meta"]["fast_mle"] = meta_fast
@@ -1540,8 +1545,7 @@ def dbmle(
         mle_tbl = "\n\n".join(blocks2)
 
         mle_tbl += (
-            "\n\nNOTE: The MLE estimate is approximated using a faster local grid search, "
-            "information on which can be found in the README."
+            "\n\n* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)"
         )
 
     else:
@@ -1554,8 +1558,7 @@ def dbmle(
         )
 
         mle_tbl += (
-            "\n\nNOTE: The MLE estimate is approximated using a faster method, "
-            "information on which can be found in the README."
+            "\n\n* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)"
         )
 
     out["report"] = "\n" + std_tbl + "\n\n" + mle_tbl
