@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment using the method from Christy and Kowalski (2025). It supports both individual-level data and aggregated counts. This design-based likelihood works for experiments using a Bernoulli randomized design or a completely randomized design. Note that the results are the same for either randomization design since their respective design-based likelihoods are proportional to one another. We also provide directions to use this package in Stata. 
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025).  Results are exact if the experiment has a Bernoulli randomized design or a completely randomized design.  This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
 
 ----------------------------------------------------------------------
 Installation
@@ -129,6 +129,8 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
         Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
   
   Where `7%|▋         |` is a visual indicator of how many dsitributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left to complete the grid search, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based off the history of this value).
+
+Note that there is no parameter for the design of the randomization (Bernoulli randomized or completely randomized) since the results are the same, as their respective design-based likelihoods are proportional to each other.
 
 ----------------------------------------------------------------------
 Note on Approximation
@@ -288,7 +290,7 @@ Control Takeup Rate         23/54 = 42.59%
 Sample Size                  115
 
 
-Christy and Kowalski Design-Based Maximum Likelihood Estimates
+Christy and Kowalski Design-Based Maximum Likelihood Estimates*
 ------------------------------------------------------------------------------------
 Always takers
   MLE: 28/115 = 24.35%
@@ -302,7 +304,7 @@ Defiers
 Never takers
   MLE: 0/115 = 0.00%
 
-NOTE: The MLE estimate is approximated using a faster method, information on which can be found in the README.
+* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Citation)
 ```
 
 
@@ -326,6 +328,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
