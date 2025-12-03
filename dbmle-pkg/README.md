@@ -301,6 +301,8 @@ Defiers
 
 Never takers
   MLE: 0/115 = 0.00%
+
+NOTE: The MLE estimate is approximated using a faster method, information on which can be found in the README.
 ```
 
 
@@ -324,6 +326,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
