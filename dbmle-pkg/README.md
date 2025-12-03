@@ -93,7 +93,7 @@ You should get an output similar to
       architecture         64-bit
       library path         /.../lib64/libpython3.12.so.1.0
 
-that is, `set python_exec` should have a valid path to python and `version` should be 3.9 or greater. Once this is done, `dbmle` can be used directly in the command line of Stata by typing a command like 
+that is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater. Once this is done, `dbmle` can be used directly in the command line of Stata by typing a command like 
 
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 
@@ -102,7 +102,7 @@ You can also use Python in a Stata script by starting the script with `python:` 
 ```
 python:
     from dbmle import dbmle
-    res = dbmle(51, 11, 23, 31)
+    res = dbmle(50, 11, 23, 31)
     print(res.report())
 end
 ```
@@ -129,7 +129,7 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
         Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
   
-  Where `7%|▋         |` is a visual indicator of how many distributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left to complete the grid search, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based on the history of this value).
+  where `7%|▋         |` is a visual indicator of how many distributions in the grid have been evaluated so far, `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate, `00:36<09:53` tells you the time elapsed so far and the predicted time left to complete the grid search, and `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based on the history of this value).
 
 Note that there is no parameter for the design of the randomization (Bernoulli randomized or completely randomized) since the results are the same, as their respective design-based likelihoods are proportional to each other.
 
@@ -137,7 +137,7 @@ Note that there is no parameter for the design of the randomization (Bernoulli r
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always takers, compliers, defiers, and never takers. For all experiment results resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the approximation is correct.
+When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always takers, compliers, defiers, and never takers. For all outcomes resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the approximation is correct.
 
 The approximation begins by considering three candidate joint distributions:
 
@@ -166,7 +166,7 @@ or equivalently in Stata,
 ```
 python:
     from dbmle import dbmle
-    res = dbmle(51, 11, 23, 31)
+    res = dbmle(50, 11, 23, 31)
     print(res.report())
 end
 ```
@@ -223,7 +223,7 @@ or in Stata,
 ```
 python:
     from dbmle import dbmle
-    res = dbmle(51, 11, 23, 31, output="auxiliary")
+    res = dbmle(50, 11, 23, 31, output="auxiliary")
     print(res.report())
 end
 ```
@@ -331,3 +331,4 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
 }
 
 ```
+
