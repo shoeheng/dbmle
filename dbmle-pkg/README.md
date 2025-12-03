@@ -51,6 +51,7 @@ from dbmle import dbmle_from_ZD
 # D: observed takeup indicator (1 = treatment takeup, 0 = did not)
 Z = [1, 1, 1, 0, 0, 0]
 D = [1, 1, 0, 1, 0, 0]
+# Data is equivalent to stylized example in Figure 1 of Christy and Kowalski (2025)
 
 res = dbmle_from_ZD(Z, D)
 print(res.report())
@@ -328,6 +329,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
