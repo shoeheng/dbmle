@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025).  Results are exact if the experiment has a Bernoulli randomized design or a completely randomized design.  This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025). The package is compatible with experiments with either a Bernoulli randomized design or a completely randomized design, and in this case, results are exact. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
 
 ----------------------------------------------------------------------
 Installation
@@ -328,6 +328,7 @@ Citation
 If you use this package in academic work, please cite it as:
 
 citation.
+
 
 
 
