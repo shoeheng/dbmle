@@ -305,7 +305,7 @@ Defiers
 Never takers
   MLE: 0/115 = 0.00%
 
-* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Citation)
+* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)
 ```
 
 
@@ -338,6 +338,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
 }
 
 ```
+
 
 
 
