@@ -322,7 +322,7 @@ Citation
 If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025) along with this package:
 
 ```
-@misc{christykowalskizhang2025dbmle,
+@misc{christy2025dbmle,
   author       = {Christy, Neil and Kowalski, Amanda and Zhang, Shuheng},
   title        = {dbmle: Design-Based Maximum Likelihood Estimation for Always Takers, Compliers, Defiers, and Never Takers},
   year         = {2025},
@@ -331,4 +331,5 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
 }
 
 ```
+
 
