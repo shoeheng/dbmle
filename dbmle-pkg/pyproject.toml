@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.6"
 license = { text = "MIT" }
 authors = [
-  { name = "Shuheng Zhang", email = "zshuheng@umich.edu" },
+  { name = "Neil Christy", email = "neilfc@umich.edu" }
+  { name = "Amanda Kowalski", email = "amanda.kowalski@gmail.com"}
+  { name = "Shuheng Zhang", email = "zshuheng@umich.edu" }
 ]
 dependencies = [
   "tqdm>=4.0",
@@ -29,6 +31,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
 
 
 
