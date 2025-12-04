@@ -275,7 +275,6 @@ Never takers
   Largest Possible Support: [0,42]/115 = [0.00%, 36.52%]
   Estimated Frechet Bounds: [0,21]/115 = [0.00%, 18.26%]
   95% SCS within Est. Frechet: [0,11]/115 U [13,21]/115 = [0.00%, 9.57%] U [11.30%, 18.26%]
-
 ```
 
 Replace `"auxiliary"` with `"approx"` to use the fast MLE approximation, which will return the output
@@ -305,7 +304,8 @@ Defiers
 Never takers
   MLE: 0/115 = 0.00%
 
-* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)
+* MLE estimates obtained from an approximation algorithm implemented 
+by the dbmle package (Christy, Kowalski, and Zhang 2025)
 ```
 
 ----------------------------------------------------------------------
@@ -330,6 +330,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
