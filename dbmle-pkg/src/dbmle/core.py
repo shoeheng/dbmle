@@ -1545,7 +1545,7 @@ def dbmle(
         mle_tbl = "\n\n".join(blocks2)
 
         mle_tbl += (
-            "\n\n* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)"
+            "\n\n* MLE estimates obtained from an approximation algorithm implemented \nby the dbmle package (Christy, Kowalski, and Zhang 2025)"
         )
 
     else:
@@ -1558,7 +1558,7 @@ def dbmle(
         )
 
         mle_tbl += (
-            "\n\n* MLE estimates obtained from an approximation algorithm implemented by the dbmle package (Christy et al. 2025)"
+            "\n\n* MLE estimates obtained from an approximation algorithm implemented \nby the dbmle package (Christy, Kowalski, and Zhang 2025)"
         )
 
     out["report"] = "\n" + std_tbl + "\n\n" + mle_tbl
