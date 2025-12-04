@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025) "Counting Defiers: A Design-Based Model of an Experiment Can Reveal Evidence Beyond the Average Effect". The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following [Christy and Kowalski (2025)](https://arxiv.org/abs/2412.16352) "Counting Defiers: A Design-Based Model of an Experiment Can Reveal Evidence Beyond the Average Effect". The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
 
 ----------------------------------------------------------------------
 Installation
@@ -330,6 +330,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
