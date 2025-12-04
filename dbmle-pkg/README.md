@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025). The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following Christy and Kowalski (2025) "Counting Defiers: A Design-Based Model of an Experiment Can Reveal Evidence Beyond the Average Effect". The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
 
 ----------------------------------------------------------------------
 Installation
@@ -48,7 +48,7 @@ It can also be calculated from the individual-level data using the `dbmle_from_Z
 from dbmle import dbmle_from_ZD
 
 # Z: randomized assignment indicator (1 = intervention, 0 = control)
-# D: observed takeup indicator (1 = treatment takeup, 0 = did not)
+# D: observed takeup indicator (1 = takeup, 0 = no takeup)
 Z = [1, 1, 1, 0, 0, 0]
 D = [1, 1, 0, 1, 0, 0]
 # Data is equivalent to stylized example in Figure 1 of Christy and Kowalski (2025)
@@ -137,7 +137,7 @@ Note that there is no parameter for the design of the randomization (Bernoulli r
 Note on Approximation
 ----------------------------------------------------------------------
 
-When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible joint distribution of always takers, compliers, defiers, and never takers. For all outcomes resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the approximation is correct.
+When `method="approx"`, the package estimates MLEs using a fast local search rather than testing every possible distribution of always takers, compliers, defiers, and never takers. For all outcomes resulting from experiments with an equal number of individuals in intervention and control up to a sample size of 200, we have verified the approximation is correct.
 
 The approximation begins by considering three candidate joint distributions:
 
@@ -330,6 +330,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
