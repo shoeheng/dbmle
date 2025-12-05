@@ -129,7 +129,7 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
         Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
   
-  The `7%|▋         |` is a visual indicator of how many distributions in the grid have been evaluated so far. The fraction `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate. The times `00:36<09:53` tell you the time elapsed so far and the predicted time left to complete the grid search (in minutes and seconds). Note that the estimate is not perfectly accurate, as the Tappin et al. (2015) examples takes about 8 minutes to run. Finally `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based on the history of this value).
+  The `7%|▋         |` is a visual indicator of how many distributions in the grid have been evaluated so far. The fraction `2814961/38579155` tells you exactly how many distributions have been calculated over how many distributions total there are to calculate. The times `00:36<09:53` tell you the time elapsed so far and the predicted time left to complete the grid search (in minutes and seconds). Note that the estimate may be inaccurate, as the Tappin et al. (2015) examples takes about 8 minutes to run. Finally `60237.47Joint Distribution/s` tells you how many distributions can be calculated in a second (the predicted time left is based on the history of this value).
 
 Note that there is no parameter for the design of the randomization (Bernoulli randomized or completely randomized) since the results are the same, as their respective design-based likelihoods are proportional to each other.
 
@@ -329,6 +329,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
