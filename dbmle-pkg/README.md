@@ -142,9 +142,8 @@ When `method="approx"`, the package estimates MLEs using a fast local search rat
 The approximation begins by considering three candidate joint distributions:
 
 - The endpoint of the estimated Fréchet set with the highest likelihood.  
-- A joint distribution with only always takers and never takers: $(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(x_{I1}+x_{C1},0,0,x_{I0}+x_{C0})$
-- A joint distribution with only compliers and defiers:
-$(\theta_{11},\theta_{10},\theta_{01},\theta_{00})=(0, x_{I1}+x_{C0},x_{I0}+x_{C1},0)$
+- A joint distribution with only always takers and never takers, so $x_{I1}+x_{C1}$ always takers and $x_{I0}+x_{C0}$ never takers.
+- A joint distribution with only compliers and defiers, so $x_{I1}+x_{C0}$ compliers and $x_{I0}+x_{C1}$ defiers.
 
 If either of the two-type joint distributions attains the highest likelihood, it is immediately returned as the MLE. Otherwise, the algorithm performs a local cube search. In this case, we search a small four-dimensional integer cube around the endpoint of the estimated Fréchet set with the highest likelihood. The width of the search increases with sample size. If the distribution with the highest likelihood lies on the boundary of the cube, we search a slightly larger cube. 
 
@@ -330,6 +329,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
