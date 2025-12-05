@@ -125,7 +125,7 @@ What statistics are to be calculated and displayed. `"basic"` performs an exhaus
 
 - **show_progress:** _bool_   
   *Default:* `True`  
-  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant when `output="approx"`). For the Tapin et al. (2015) data, the `tqdm` bar looks as follows:
+  Whether to display a `tqdm` progress bar for the exhaustive grid search (not relevant when `output="approx"`). For the Tappin et al. (2015) data, the `tqdm` bar looks as follows:
 
         Enumerating Joint Distributions:   7%|▋         | 2814961/38579155 [00:36<09:53, 60237.47Joint Distribution/s]
   
@@ -329,6 +329,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
