@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbmle"
+version = "0.0.1"
+description = "Design-based MLE to estimate always taker, complier, defier, never taker counts."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Neil Christy", email = "neilfc@umich.edu" },
+  { name = "Amanda Kowalski", email = "amanda.kowalski@gmail.com"},
+  { name = "Shuheng Zhang", email = "zshuheng@umich.edu" }
+]
+dependencies = [
+  "tqdm>=4.0",
+  "scipy>=1.5"
+]
+
+[project.urls]
+Homepage = "https://github.com/shoeheng/dbmle"
+Issues = "https://github.com/shoeheng/dbmle/issues"
+
+[project.scripts]
+dbmle = "dbmle.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+
+
+
+
+
