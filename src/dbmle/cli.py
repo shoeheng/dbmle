@@ -22,7 +22,7 @@ def main():
     parser.add_argument(
         "--output",
         choices=["basic", "auxiliary", "approx"],  
-        default="approx",
+        default="basic",
         help=(
             "What to compute and display:\n"
             "  - basic     : exhaustive grid; Standard Stats + MLE(s) + global 95%% SCS\n"
@@ -61,4 +61,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
