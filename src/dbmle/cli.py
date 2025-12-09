@@ -26,7 +26,7 @@ def main():
         help=(
             "What to compute and display:\n"
             "  - basic     : exhaustive grid; Standard Stats + MLE(s) + global 95%% SCS\n"
-            "  - auxiliary : exhaustive grid; adds Frechet-based stats and Frechet-conditional 95%% SCS\n"
+            "  - auxiliary : exhaustive grid; adds more stats from auxiliary table\n"
             "  - approx    : fast approximate MLE only (no auxiliaries)\n"
         ),
     )
@@ -61,5 +61,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
