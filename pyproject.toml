@@ -22,6 +22,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/shoeheng/dbmle"
 Issues = "https://github.com/shoeheng/dbmle/issues"
+PyPI = "https://pypi.org/project/dbmle/"
 
 [project.scripts]
 dbmle = "dbmle.cli:main"
@@ -31,6 +32,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
 
 
 
