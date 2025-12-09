@@ -308,6 +308,8 @@ Project Links
 ----------------------------------------------------------------------
 
 PyPI: https://pypi.org/project/dbmle/
+Source code: https://github.com/shoeheng/dbmle
+Issue tracker: https://github.com/shoeheng/dbmle/issues
 
 ----------------------------------------------------------------------
 Citation
@@ -324,6 +326,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.1}
 }
 ```
+
 
 
 
