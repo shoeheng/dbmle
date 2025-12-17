@@ -163,7 +163,16 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     # Store full printable report as a local if present
     if "report" in res and isinstance(res["report"], str):
         Macro.setLocal(f"{prefix}report", res["report"])
-
+    
+    num_mles = len(mle_list)
+    Scalar.setValue(rname("num_mles"), float(num_mles))
+    
+    if num_mles > 1:
+        # Message to Stata Results window (works inside Stata python)
+        print(
+            f"[dbmle] NOTE: {num_mles} tied MLEs detected. "
+            f"See matrix {rname('mle_list')} for all solutions."
+        )
 
 def dbmle_to_r(
     xI1: int,
@@ -175,6 +184,7 @@ def dbmle_to_r(
     level: float = 0.95,
     show_progress: bool = True,
     prefix: str = "",
+    return_result: bool = False
 ) -> DBMLEResult:
     """
     Compute dbmle() and populate Stata outputs.
@@ -195,5 +205,8 @@ def dbmle_to_r(
         level=level,
         show_progress=show_progress,
     )
+
     set_r_from_result(res, prefix=prefix)
-    return res
+    if return_result:
+        return res
+    return None
