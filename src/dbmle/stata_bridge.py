@@ -58,14 +58,16 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     # locals (strings) for unions etc., only in exhaustive modes
     if outmode in ("basic", "auxiliary"):
         union = res["global_95_scs"]["union_str"]
-        Macro.setLocal(rname("theta11_scs"), union["theta11"])
-        Macro.setLocal(rname("theta10_scs"), union["theta10"])
-        Macro.setLocal(rname("theta01_scs"), union["theta01"])
-        Macro.setLocal(rname("theta00_scs"), union["theta00"])
+        Macro.setLocal(f"{prefix}theta11_scs", union["theta11"])
+        Macro.setLocal(f"{prefix}theta10_scs", union["theta10"])
+        Macro.setLocal(f"{prefix}theta01_scs", union["theta01"])
+        Macro.setLocal(f"{prefix}theta00_scs", union["theta00"])
+
 
     # store full printable report as a local
     if "report" in res:
-        Macro.setLocal(rname("report"), res["report"])
+        Macro.setLocal(f"{prefix}report", res["report"])
+
 
 
 def dbmle_to_r(
