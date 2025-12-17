@@ -31,15 +31,21 @@ def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) ->
     Macro.setLocal(f"{prefix}theta01_{base_name}", union_str["theta01"])
     Macro.setLocal(f"{prefix}theta00_{base_name}", union_str["theta00"])
 
-
-def _set_interval_locals(prefix: str, base_name: str, intervals: Dict[str, Tuple[int, int]]) -> None:
-    """
-    Store simple [lo,hi] integer intervals as Stata locals like:
-      `<prefix>theta11_<base_name>' = "[lo,hi]"
-    """
+def _set_interval_locals(prefix: str, base_name: str, intervals) -> None:
     for key in ("theta11", "theta10", "theta01", "theta00"):
         lo, hi = intervals[key]
-        Macro.setLocal(f"{prefix}{key}_{base_name}", f"[{lo},{hi}]")
+
+        # Coerce numpy/scalar types safely
+        lo_i = int(lo)
+        hi_i = int(hi)
+
+        name = f"{prefix}{key}_{base_name}"
+        value = f"[{lo_i},{hi_i}]"
+
+        # Stata locals can't contain newlines; strip just in case
+        value = value.replace("\n", " ").replace("\r", " ")
+
+        Macro.setLocal(name, value)
 
 
 def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
