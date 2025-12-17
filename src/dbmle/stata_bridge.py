@@ -1,15 +1,19 @@
+# src/dbmle/stata_bridge.py
+
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple, List
 
 import dbmle.core as core
+from dbmle.core import DBMLEResult
 
 try:
+    # Only available inside Stata's embedded Python
     from sfi import Scalar, Macro, Matrix
 except Exception:
     Scalar = Macro = Matrix = None
 
 
-def _require_stata():
+def _require_stata() -> None:
     if Scalar is None or Macro is None or Matrix is None:
         raise RuntimeError(
             "Stata bridge requires Stata's embedded Python (module 'sfi' not found). "
@@ -17,68 +21,154 @@ def _require_stata():
         )
 
 
+def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) -> None:
+    """
+    Store union-of-interval strings as Stata locals like:
+      `prefix + theta11_<base_name>' etc.
+    """
+    Macro.setLocal(f"{prefix}theta11_{base_name}", union_str["theta11"])
+    Macro.setLocal(f"{prefix}theta10_{base_name}", union_str["theta10"])
+    Macro.setLocal(f"{prefix}theta01_{base_name}", union_str["theta01"])
+    Macro.setLocal(f"{prefix}theta00_{base_name}", union_str["theta00"])
+
+
+def _set_interval_locals(prefix: str, base_name: str, intervals: Dict[str, Tuple[int, int]]) -> None:
+    """
+    Store simple [lo,hi] integer intervals as Stata locals like:
+      `prefix + theta11_<base_name>' = "[lo,hi]"
+    """
+    for key in ("theta11", "theta10", "theta01", "theta00"):
+        lo, hi = intervals[key]
+        Macro.setLocal(f"{prefix}{key}_{base_name}", f"[{lo},{hi}]")
+
+
 def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     """
-    Write key results into Stata r().
+    Write results into Stata.
+
+    - Numeric outputs -> r() scalars / matrices
+    - Set-valued outputs (interval unions) -> locals (strings)
 
     prefix: optional prefix for names, e.g. prefix="dbmle_" -> r(dbmle_n), etc.
     """
     _require_stata()
 
-    inp = res["summary"]["inputs"]          # expects xI1,xI0,xC1,xC0,n,m,c
-    mle_list = res["mle"]["mle_list"]       # list of (t11,t10,t01,t00)
+    # ---- required structure ----
+    inp = res["summary"]["inputs"]  # expects xI1,xI0,xC1,xC0,n,m,c
     outmode = res["meta"]["output"]
+
+    mle = res.get("mle", {})
+    mle_list: List[Tuple[int, int, int, int]] = mle.get("mle_list", [])
+    if not mle_list:
+        raise RuntimeError("Result missing mle.mle_list; cannot populate r(mle_list).")
 
     def rname(name: str) -> str:
         return f"r({prefix}{name})"
 
-    # scalars
+    # ---- scalars always available ----
     Scalar.setValue(rname("n"), float(inp["n"]))
     Scalar.setValue(rname("m"), float(inp["m"]))
     Scalar.setValue(rname("c"), float(inp["c"]))
 
-    # first MLE as scalars
+    # First MLE as scalars
     t11, t10, t01, t00 = mle_list[0]
     Scalar.setValue(rname("theta11_mle"), float(t11))
     Scalar.setValue(rname("theta10_mle"), float(t10))
     Scalar.setValue(rname("theta01_mle"), float(t01))
     Scalar.setValue(rname("theta00_mle"), float(t00))
 
-    # all MLEs (ties) as matrix kx4
+    # All MLEs (ties) as matrix kx4 (0-based indexing for sfi.Matrix.storeAt)
     k = len(mle_list)
-    Matrix.create(f"r({prefix}mle_list)", k, 4, 0)
-    
-    for i, (a, c_, d, n_) in enumerate(mle_list):   # i = 0..k-1
-        Matrix.storeAt(f"r({prefix}mle_list)", i, 0, float(a))
-        Matrix.storeAt(f"r({prefix}mle_list)", i, 1, float(c_))
-        Matrix.storeAt(f"r({prefix}mle_list)", i, 2, float(d))
-        Matrix.storeAt(f"r({prefix}mle_list)", i, 3, float(n_))
+    Matrix.create(rname("mle_list"), k, 4, 0)
+    for i, (a, c_, d, n_) in enumerate(mle_list):  # i = 0..k-1
+        Matrix.storeAt(rname("mle_list"), i, 0, float(a))
+        Matrix.storeAt(rname("mle_list"), i, 1, float(c_))
+        Matrix.storeAt(rname("mle_list"), i, 2, float(d))
+        Matrix.storeAt(rname("mle_list"), i, 3, float(n_))
 
-
-    # locals (strings) for unions etc., only in exhaustive modes
+    # ---- global SCS unions (only in exhaustive modes) ----
     if outmode in ("basic", "auxiliary"):
-        union = res["global_95_scs"]["union_str"]
-        Macro.setLocal(f"{prefix}theta11_scs", union["theta11"])
-        Macro.setLocal(f"{prefix}theta10_scs", union["theta10"])
-        Macro.setLocal(f"{prefix}theta01_scs", union["theta01"])
-        Macro.setLocal(f"{prefix}theta00_scs", union["theta00"])
+        g = res.get("global_95_scs")
+        if g and "union_str" in g:
+            _set_union_locals(prefix, "scs", g["union_str"])
 
+    # ---- auxiliary-only exports (best-effort; only if present) ----
+    if outmode == "auxiliary":
+        # Largest possible support (often simple intervals)
+        supports = res.get("supports", {})
+        lps = supports.get("largest_possible_support")
+        if lps and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
+            _set_interval_locals(prefix, "support", lps)
 
-    # store full printable report as a local
-    if "report" in res:
+        # Estimated Fréchet bounds (often already formatted as union_str somewhere)
+        # We accept either:
+        #   res["frechet_bounds"]["union_str"] (if you store it that way), OR
+        #   res["frechet"]["union_str"], OR
+        #   res["frechet"]["bounds_union_str"], etc.
+        # This is intentionally flexible.
+        frechet_union = None
+        for cand_key in ("frechet_bounds", "frechet"):
+            cand = res.get(cand_key, {})
+            if isinstance(cand, dict):
+                if "union_str" in cand:
+                    frechet_union = cand["union_str"]
+                    break
+                if "bounds_union_str" in cand:
+                    frechet_union = cand["bounds_union_str"]
+                    break
+        if frechet_union and all(k in frechet_union for k in ("theta11", "theta10", "theta01", "theta00")):
+            _set_union_locals(prefix, "frechet", frechet_union)
+
+        # 95% SCS within estimated Fréchet set (if present)
+        fscs = res.get("frechet_95_scs")
+        if fscs and "union_str" in fscs:
+            fus = fscs["union_str"]
+            if all(k in fus for k in ("theta11", "theta10", "theta01", "theta00")):
+                _set_union_locals(prefix, "frechet_scs", fus)
+
+        # Optional: store additional diagnostic strings if you have them
+        # e.g. res["meta"].get("diagnostics_str") or similar
+        diag = res.get("meta", {}).get("diagnostics_str")
+        if isinstance(diag, str):
+            Macro.setLocal(f"{prefix}diagnostics", diag)
+
+    # ---- approx-mode exports (best-effort) ----
+    # Typically you still want the MLE scalars/matrix; SCS unions won't exist.
+    if outmode == "approx":
+        approx_meta = res.get("meta", {}).get("approx")
+        if isinstance(approx_meta, str):
+            Macro.setLocal(f"{prefix}approx", approx_meta)
+
+    # Store full printable report as a local if present
+    if "report" in res and isinstance(res["report"], str):
         Macro.setLocal(f"{prefix}report", res["report"])
 
 
-
 def dbmle_to_r(
-    xI1: int, xI0: int, xC1: int, xC0: int,
-    *, output: str = "basic", level: float = 0.95,
-    show_progress: bool = True, prefix: str = ""
+    xI1: int,
+    xI0: int,
+    xC1: int,
+    xC0: int,
+    *,
+    output: str = "basic",
+    level: float = 0.95,
+    show_progress: bool = True,
+    prefix: str = "",
 ) -> DBMLEResult:
     """
-    Compute dbmle() and immediately populate Stata's r().
-    Returns the usual DBMLEResult as well.
+    Compute dbmle() and populate Stata outputs.
+
+    - r() scalars: n, m, c, theta??_mle
+    - r() matrix:  mle_list  (k x 4)
+    - locals:      <prefix>theta??_scs, plus auxiliary locals when output="auxiliary"
+
+    Returns the DBMLEResult as well.
     """
-    res = core.dbmle(xI1, xI0, xC1, xC0, output=output, level=level, show_progress=show_progress)
+    res = core.dbmle(
+        xI1, xI0, xC1, xC0,
+        output=output,
+        level=level,
+        show_progress=show_progress,
+    )
     set_r_from_result(res, prefix=prefix)
     return res
