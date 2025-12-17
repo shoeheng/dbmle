@@ -34,15 +34,11 @@ def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) ->
 def _set_interval_locals(prefix: str, base_name: str, intervals) -> None:
     for key in ("theta11", "theta10", "theta01", "theta00"):
         lo, hi = intervals[key]
-
-        # Coerce numpy/scalar types safely
         lo_i = int(lo)
         hi_i = int(hi)
 
         name = f"{prefix}{key}_{base_name}"
         value = f"[{lo_i},{hi_i}]"
-
-        # Stata locals can't contain newlines; strip just in case
         value = value.replace("\n", " ").replace("\r", " ")
 
         Macro.setLocal(name, value)
@@ -113,7 +109,7 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         lps = supports.get("largest_possible_support")
         if lps and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
             # NOTE: locals can't contain spaces, so we use underscores.
-            _set_interval_locals(prefix, "Largest_Possible_Support", lps)
+            _set_interval_locals(prefix, "lps", lps)
 
         # Estimated Fréchet bounds (accept several possible key layouts)
         frechet_union = None
