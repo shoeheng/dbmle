@@ -1,7 +1,7 @@
 # src/dbmle/stata_bridge.py
 
 from __future__ import annotations
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Tuple, List
 
 import dbmle.core as core
 from dbmle.core import DBMLEResult
@@ -31,7 +31,12 @@ def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) ->
     Macro.setLocal(f"{prefix}theta01_{base_name}", union_str["theta01"])
     Macro.setLocal(f"{prefix}theta00_{base_name}", union_str["theta00"])
 
+
 def _set_interval_locals(prefix: str, base_name: str, intervals) -> None:
+    """
+    Store simple [lo,hi] integer intervals as Stata locals like:
+      `<prefix>theta11_<base_name>' = "[lo,hi]"
+    """
     for key in ("theta11", "theta10", "theta01", "theta00"):
         lo, hi = intervals[key]
         lo_i = int(lo)
@@ -40,7 +45,6 @@ def _set_interval_locals(prefix: str, base_name: str, intervals) -> None:
         name = f"{prefix}{key}_{base_name}"
         value = f"[{lo_i},{hi_i}]"
         value = value.replace("\n", " ").replace("\r", " ")
-
         Macro.setLocal(name, value)
 
 
@@ -102,35 +106,30 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         if g and "union_str" in g:
             _set_union_locals(prefix, "scs", g["union_str"])
 
-    # ---- auxiliary-only exports (best-effort; only if present) ----
+    # ---- auxiliary-only exports (correct key paths) ----
     if outmode == "auxiliary":
-        # Largest Possible Support (simple intervals)
         supports = res.get("supports", {})
+
+        # Largest Possible Support
         lps = supports.get("largest_possible_support")
         if lps and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
-            # NOTE: locals can't contain spaces, so we use underscores.
             _set_interval_locals(prefix, "lps", lps)
 
-        # Estimated Fréchet bounds (accept several possible key layouts)
-        frechet_union = None
-        for cand_key in ("frechet_bounds", "frechet"):
-            cand = res.get(cand_key, {})
-            if isinstance(cand, dict):
-                if "union_str" in cand:
-                    frechet_union = cand["union_str"]
-                    break
-                if "bounds_union_str" in cand:
-                    frechet_union = cand["bounds_union_str"]
-                    break
-        if frechet_union and all(k in frechet_union for k in ("theta11", "theta10", "theta01", "theta00")):
-            _set_union_locals(prefix, "frechet", frechet_union)
+        # Estimated Fréchet bounds live here:
+        #   res["supports"]["estimated_frechet_bounds"]["union_str"]
+        efb = supports.get("estimated_frechet_bounds")
+        if efb and "union_str" in efb:
+            u = efb["union_str"]
+            if all(k in u for k in ("theta11", "theta10", "theta01", "theta00")):
+                _set_union_locals(prefix, "frechet", u)
 
-        # 95% SCS within estimated Fréchet set (if present)
+        # 95% SCS within estimated Fréchet set lives here:
+        #   res["frechet_95_scs"]["union_str"]
         fscs = res.get("frechet_95_scs")
         if fscs and "union_str" in fscs:
-            fus = fscs["union_str"]
-            if all(k in fus for k in ("theta11", "theta10", "theta01", "theta00")):
-                _set_union_locals(prefix, "frechet_scs", fus)
+            u = fscs["union_str"]
+            if all(k in u for k in ("theta11", "theta10", "theta01", "theta00")):
+                _set_union_locals(prefix, "frechet_scs", u)
 
         # Optional: store additional diagnostics if present
         diag = res.get("meta", {}).get("diagnostics_str")
@@ -165,8 +164,10 @@ def dbmle_to_r(
     - r() scalars: n, m, c, theta??_mle
     - r() matrix:  mle_list  (k x 4)
     - locals:      <prefix>theta??_scs
-                   plus auxiliary locals when output="auxiliary", e.g.
-                     <prefix>theta11_Largest_Possible_Support
+                   plus auxiliary locals when output="auxiliary":
+                     <prefix>theta??_lps
+                     <prefix>theta??_frechet
+                     <prefix>theta??_frechet_scs
 
     Returns the DBMLEResult as well.
     """
