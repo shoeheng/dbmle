@@ -12,4 +12,5 @@ __all__ = [
     "DBMLEResult",
 ]
 
-
+from dbmle.stata_bridge import dbmle_to_r
+__all__.append("dbmle_to_r")
