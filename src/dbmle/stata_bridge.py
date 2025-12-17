@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Tuple, Optional
 
-from dbmle.core import dbmle, DBMLEResult
+import dbmle.core as core
 
 try:
     from sfi import Scalar, Macro, Matrix
@@ -75,6 +75,6 @@ def dbmle_to_r(
     Compute dbmle() and immediately populate Stata's r().
     Returns the usual DBMLEResult as well.
     """
-    res = dbmle(xI1, xI0, xC1, xC0, output=output, level=level, show_progress=show_progress)
+    res = core.dbmle(xI1, xI0, xC1, xC0, output=output, level=level, show_progress=show_progress)
     set_r_from_result(res, prefix=prefix)
     return res
