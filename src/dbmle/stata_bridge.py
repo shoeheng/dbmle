@@ -31,6 +31,30 @@ def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) ->
     Macro.setLocal(f"{prefix}theta01_{base_name}", union_str["theta01"])
     Macro.setLocal(f"{prefix}theta00_{base_name}", union_str["theta00"])
 
+def _intervals_to_union_str(intervals) -> str:
+    """
+    Convert a list of [lo, hi] (or (lo, hi)) into a union string:
+      [[1,2],[5,7]] -> "[1,2] U [5,7]"
+    Accepts intervals=None, empty list, numpy ints, etc.
+    """
+    if not intervals:
+        return ""
+
+    parts = []
+    for seg in intervals:
+        lo, hi = seg
+        lo_i, hi_i = int(lo), int(hi)
+        parts.append(f"[{lo_i},{hi_i}]")
+    return " U ".join(parts)
+
+def _set_union_locals_from_intervals(prefix: str, base_name: str, obj: Dict[str, Any]) -> None:
+    """
+    obj must have keys like theta11_intervals, theta10_intervals, ...
+    """
+    Macro.setLocal(f"{prefix}theta11_{base_name}", _intervals_to_union_str(obj.get("theta11_intervals")))
+    Macro.setLocal(f"{prefix}theta10_{base_name}", _intervals_to_union_str(obj.get("theta10_intervals")))
+    Macro.setLocal(f"{prefix}theta01_{base_name}", _intervals_to_union_str(obj.get("theta01_intervals")))
+    Macro.setLocal(f"{prefix}theta00_{base_name}", _intervals_to_union_str(obj.get("theta00_intervals")))
 
 def _set_interval_locals(prefix: str, base_name: str, intervals) -> None:
     """
@@ -115,21 +139,15 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         if lps and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
             _set_interval_locals(prefix, "lps", lps)
 
-        # Estimated Fréchet bounds live here:
-        #   res["supports"]["estimated_frechet_bounds"]["union_str"]
+        # Estimated Fréchet bounds: stored as *_intervals in supports["estimated_frechet_bounds"]
         efb = supports.get("estimated_frechet_bounds")
-        if efb and "union_str" in efb:
-            u = efb["union_str"]
-            if all(k in u for k in ("theta11", "theta10", "theta01", "theta00")):
-                _set_union_locals(prefix, "frechet", u)
-
-        # 95% SCS within estimated Fréchet set lives here:
-        #   res["frechet_95_scs"]["union_str"]
+        if isinstance(efb, dict):
+            _set_union_locals_from_intervals(prefix, "frechet", efb)
+        
+        # 95% SCS within estimated Fréchet set: stored as *_intervals in res["frechet_95_scs"]
         fscs = res.get("frechet_95_scs")
-        if fscs and "union_str" in fscs:
-            u = fscs["union_str"]
-            if all(k in u for k in ("theta11", "theta10", "theta01", "theta00")):
-                _set_union_locals(prefix, "frechet_scs", u)
+        if isinstance(fscs, dict):
+            _set_union_locals_from_intervals(prefix, "frechet_scs", fscs)
 
         # Optional: store additional diagnostics if present
         diag = res.get("meta", {}).get("diagnostics_str")
