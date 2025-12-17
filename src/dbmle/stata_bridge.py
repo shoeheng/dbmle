@@ -24,7 +24,7 @@ def _require_stata() -> None:
 def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) -> None:
     """
     Store union-of-interval strings as Stata locals like:
-      `prefix + theta11_<base_name>' etc.
+      `<prefix>theta11_<base_name>' etc.
     """
     Macro.setLocal(f"{prefix}theta11_{base_name}", union_str["theta11"])
     Macro.setLocal(f"{prefix}theta10_{base_name}", union_str["theta10"])
@@ -35,7 +35,7 @@ def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) ->
 def _set_interval_locals(prefix: str, base_name: str, intervals: Dict[str, Tuple[int, int]]) -> None:
     """
     Store simple [lo,hi] integer intervals as Stata locals like:
-      `prefix + theta11_<base_name>' = "[lo,hi]"
+      `<prefix>theta11_<base_name>' = "[lo,hi]"
     """
     for key in ("theta11", "theta10", "theta01", "theta00"):
         lo, hi = intervals[key]
@@ -80,6 +80,14 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     # All MLEs (ties) as matrix kx4 (0-based indexing for sfi.Matrix.storeAt)
     k = len(mle_list)
     Matrix.create(rname("mle_list"), k, 4, 0)
+
+    # Try to set column names inside the matrix itself (avoids Stata parser quirks later).
+    # If the installed sfi.Matrix doesn't support setColNames, this silently does nothing.
+    try:
+        Matrix.setColNames(rname("mle_list"), ["always", "complier", "defier", "never"])
+    except Exception:
+        pass
+
     for i, (a, c_, d, n_) in enumerate(mle_list):  # i = 0..k-1
         Matrix.storeAt(rname("mle_list"), i, 0, float(a))
         Matrix.storeAt(rname("mle_list"), i, 1, float(c_))
@@ -94,18 +102,14 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
 
     # ---- auxiliary-only exports (best-effort; only if present) ----
     if outmode == "auxiliary":
-        # Largest possible support (often simple intervals)
+        # Largest Possible Support (simple intervals)
         supports = res.get("supports", {})
         lps = supports.get("largest_possible_support")
         if lps and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
-            _set_interval_locals(prefix, "support", lps)
+            # NOTE: locals can't contain spaces, so we use underscores.
+            _set_interval_locals(prefix, "Largest_Possible_Support", lps)
 
-        # Estimated Fréchet bounds (often already formatted as union_str somewhere)
-        # We accept either:
-        #   res["frechet_bounds"]["union_str"] (if you store it that way), OR
-        #   res["frechet"]["union_str"], OR
-        #   res["frechet"]["bounds_union_str"], etc.
-        # This is intentionally flexible.
+        # Estimated Fréchet bounds (accept several possible key layouts)
         frechet_union = None
         for cand_key in ("frechet_bounds", "frechet"):
             cand = res.get(cand_key, {})
@@ -126,14 +130,12 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
             if all(k in fus for k in ("theta11", "theta10", "theta01", "theta00")):
                 _set_union_locals(prefix, "frechet_scs", fus)
 
-        # Optional: store additional diagnostic strings if you have them
-        # e.g. res["meta"].get("diagnostics_str") or similar
+        # Optional: store additional diagnostics if present
         diag = res.get("meta", {}).get("diagnostics_str")
         if isinstance(diag, str):
             Macro.setLocal(f"{prefix}diagnostics", diag)
 
     # ---- approx-mode exports (best-effort) ----
-    # Typically you still want the MLE scalars/matrix; SCS unions won't exist.
     if outmode == "approx":
         approx_meta = res.get("meta", {}).get("approx")
         if isinstance(approx_meta, str):
@@ -160,7 +162,9 @@ def dbmle_to_r(
 
     - r() scalars: n, m, c, theta??_mle
     - r() matrix:  mle_list  (k x 4)
-    - locals:      <prefix>theta??_scs, plus auxiliary locals when output="auxiliary"
+    - locals:      <prefix>theta??_scs
+                   plus auxiliary locals when output="auxiliary", e.g.
+                     <prefix>theta11_Largest_Possible_Support
 
     Returns the DBMLEResult as well.
     """
