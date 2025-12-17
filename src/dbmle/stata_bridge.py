@@ -47,11 +47,12 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     # all MLEs (ties) as matrix kx4
     k = len(mle_list)
     Matrix.create(rname("mle_list"), k, 4, 0)
-    for i, (a, c_, d, n_) in enumerate(mle_list, start=1):
-        Matrix.storeAt(rname("mle_list"), i, 1, float(a))
-        Matrix.storeAt(rname("mle_list"), i, 2, float(c_))
-        Matrix.storeAt(rname("mle_list"), i, 3, float(d))
-        Matrix.storeAt(rname("mle_list"), i, 4, float(n_))
+    for i, (a, c_, d, n_) in enumerate(mle_list):
+        Matrix.storeAt("r(mle_list)", i, 0, float(a))
+        Matrix.storeAt("r(mle_list)", i, 1, float(c_))
+        Matrix.storeAt("r(mle_list)", i, 2, float(d))
+        Matrix.storeAt("r(mle_list)", i, 3, float(n_))
+
 
     # locals (strings) for unions etc., only in exhaustive modes
     if outmode in ("basic", "auxiliary"):
