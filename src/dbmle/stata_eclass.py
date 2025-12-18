@@ -1,28 +1,29 @@
 # src/dbmle/stata_eclass.py
 # ---------------------------------------------------------------------
-# Pure-Python Stata eclass bridge for dbmle (no .ado files shipped).
+# Pure-Python Stata eclass bridge for dbmle (no shipped .ado).
 #
-# How it works (important Stata constraint):
-# - Stata only allows setting e() from an eclass program.
-# - So Python:
-#     1) computes dbmle()
-#     2) writes temporary Stata matrices/globals
-#     3) defines an in-memory eclass program (once per call; safe)
-#     4) calls that eclass program to populate e()
+# Key constraint:
+#   Stata forbids setting e() unless you're inside an eclass program.
+#
+# Robust approach:
+#   - Python computes dbmle()
+#   - Python creates temp matrices + globals
+#   - Python ensures an in-memory eclass program exists by writing a
+#     temporary .do file and `do`-ing it (runtime only; not shipped)
+#   - Python calls the eclass program to populate e()
 #
 # Behavior:
-# - Always populates e(b), e(V), e(N), e(level), e(k_mle), plus e(cmd), e(title), e(properties).
-# - If output == "approx": DOES NOT populate credible set objects in e().
-# - Else (basic/auxiliary): populates e(scs_minmax) and e(scs_theta11/10/01/00).
-# - Optional prefix snapshots (non-e()) for looping without overwriting:
-#     matrices: <prefix>_b, <prefix>_V, <prefix>_scs_minmax
-#     scalars : scalar <prefix>_N, <prefix>_level, <prefix>_k_mle
-#     globals : ${<prefix>_scs_theta11}, ... (exact unions as strings)
+#   - Always populates: e(b), e(V), e(N), e(level), e(k_mle), e(cmd), e(title)
+#   - If output == "approx": DOES NOT populate SCS objects in e()
+#   - Else: populates e(scs_minmax) and e(scs_theta11/10/01/00)
+#   - Optional snapshots with prefix (outside e()) for looping
 # ---------------------------------------------------------------------
 
 from __future__ import annotations
 
+import os
 import re
+import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 from dbmle.core import dbmle as _dbmle
@@ -46,6 +47,7 @@ def _require_stata() -> None:
 
 def _stata(cmd: str) -> None:
     from sfi import SFIToolkit
+    # SFIToolkit.stata expects a single valid Stata command
     SFIToolkit.stata(cmd)
 
 
@@ -53,30 +55,8 @@ def _matrix_drop(name: str) -> None:
     _stata(f"capture matrix drop {name}")
 
 
-def _stata_compound_quote(s: str) -> str:
-    """
-    Return a Stata compound-quoted string literal: `"...""'
-    We also strip CR/LF to prevent Stata 'invalid syntax' failures in command parsing.
-    """
-    s = "" if s is None else str(s)
-    s = s.replace("\r", " ").replace("\n", " ")
-    s = s.replace('"', '""')
-    return f'`"{s}"\''
-
-
-def _ereturn_local(key: str, value: str) -> None:
-    lit = _stata_compound_quote(value)
-    _stata(f"ereturn local {key} {lit}")
-
-
-def _global_set(name: str, value: str) -> None:
-    """
-    Set a Stata global macro safely (no Stata command parsing / quoting).
-    """
-    from sfi import Macro
-    v = "" if value is None else str(value)
-    v = v.replace("\r", " ").replace("\n", " ")
-    Macro.setGlobal(name, v)
+def _scalar_drop(name: str) -> None:
+    _stata(f"capture scalar drop {name}")
 
 
 def _validate_prefix(prefix: str) -> str:
@@ -90,6 +70,16 @@ def _validate_prefix(prefix: str) -> str:
             f"Invalid prefix '{prefix}'. Use letters/digits/underscore; start with letter/underscore."
         )
     return prefix
+
+
+def _global_set(name: str, value: str) -> None:
+    """
+    Set a Stata global macro safely (bypasses Stata command parsing).
+    """
+    from sfi import Macro
+    v = "" if value is None else str(value)
+    v = v.replace("\r", " ").replace("\n", " ")
+    Macro.setGlobal(name, v)
 
 
 # ----------------------------
@@ -110,40 +100,70 @@ def _intervals_minmax(intervals: Optional[List[List[int]]]) -> Tuple[Optional[in
 
 
 # ----------------------------
-# In-memory eclass setter program
+# eclass program loader (runtime-only .do)
 # ----------------------------
+_PROG_LOADED_FLAG_GLOBAL = "_DBMLE_PY_SETE_LOADED"
+
+
 def _ensure_sete_program() -> None:
     """
-    Define a tiny Stata eclass program in memory (no .ado).
-    Must send one command at a time to SFIToolkit.stata().
-    """
-    cmds = [
-        "capture program drop _dbmle_py_sete",
-        "program define _dbmle_py_sete, eclass",
-        "    version 17",
-        "    syntax , BMAT(name) VMAT(name) N(real) LEVEL(real) KMLE(integer) [ SCSMAT(name) CMD(string) TITLE(string) ]",
-        "    ereturn clear",
-        "    ereturn post `bmat' `vmat'",
-        "    ereturn scalar N     = `n'",
-        "    ereturn scalar level = `level'",
-        "    ereturn scalar k_mle = `kmle'",
-        "    if (\"`cmd'\"==\"\")   ereturn local cmd   \"dbmle\"",
-        "    else                  ereturn local cmd   \"`cmd'\"",
-        "    if (\"`title'\"==\"\") ereturn local title \"Design-based MLE counts (Always/Complier/Defier/Never)\"",
-        "    else                   ereturn local title \"`title'\"",
-        "    ereturn local properties \"b V\"",
-        "    if (\"`scsmat'\" != \"\") {",
-        "        ereturn matrix scs_minmax = `scsmat'",
-        "        ereturn local scs_theta11 \"${_DBMLE_SCS_THETA11}\"",
-        "        ereturn local scs_theta10 \"${_DBMLE_SCS_THETA10}\"",
-        "        ereturn local scs_theta01 \"${_DBMLE_SCS_THETA01}\"",
-        "        ereturn local scs_theta00 \"${_DBMLE_SCS_THETA00}\"",
-        "    }",
-        "end",
-    ]
-    for c in cmds:
-        _stata(c)
+    Ensure the Stata eclass program _dbmle_py_sete exists.
 
+    Robust method: write a tiny .do file and `do` it.
+    This avoids all the "1>>>" program-entry-mode weirdness.
+    """
+    from sfi import Macro
+
+    if Macro.getGlobal(_PROG_LOADED_FLAG_GLOBAL) == "1":
+        return
+
+    # Minimal eclass setter program: reads temp matrices/globals created by Python
+    do_text = r"""
+capture program drop _dbmle_py_sete
+program define _dbmle_py_sete, eclass
+    version 17
+    // Required
+    syntax , BMAT(name) VMAT(name) N(real) LEVEL(real) KMLE(integer) ///
+            [ SCSMAT(name) CMD(string) TITLE(string) ]
+
+    ereturn clear
+    ereturn post `bmat' `vmat'
+
+    ereturn scalar N     = `n'
+    ereturn scalar level = `level'
+    ereturn scalar k_mle = `kmle'
+
+    if ("`cmd'"=="")   ereturn local cmd   "dbmle"
+    else              ereturn local cmd   "`cmd'"
+
+    if ("`title'"=="") ereturn local title "Design-based MLE counts (Always/Complier/Defier/Never)"
+    else               ereturn local title "`title'"
+
+    ereturn local properties "b V"
+
+    if ("`scsmat'" != "") {
+        ereturn matrix scs_minmax = `scsmat'
+        ereturn local scs_theta11 "${_DBMLE_SCS_THETA11}"
+        ereturn local scs_theta10 "${_DBMLE_SCS_THETA10}"
+        ereturn local scs_theta01 "${_DBMLE_SCS_THETA01}"
+        ereturn local scs_theta00 "${_DBMLE_SCS_THETA00}"
+    }
+end
+"""
+
+    # Write & run the do-file
+    fd, path = tempfile.mkstemp(prefix="dbmle_sete_", suffix=".do")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(do_text)
+        # Use quotes around path (may include spaces)
+        _stata(f'do "{path}"')
+        Macro.setGlobal(_PROG_LOADED_FLAG_GLOBAL, "1")
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
 
 # ----------------------------
@@ -165,16 +185,10 @@ def dbmle_to_eclass(
     return_result: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """
-    Compute dbmle in Python; populate Stata e() using an in-memory eclass program.
+    Compute dbmle in Python; populate Stata e() using an eclass program.
 
-    Rules:
-    - output="approx"  -> ONLY MLE is populated (no SCS in e()).
-    - output!="approx" -> populate SCS in e() if available.
-
-    Note:
-    - Stata has only one active e() at a time; each call overwrites e().
-    - Use `estimates store name` in Stata to keep multiple e() results.
-    - prefix snapshots are an extra convenience for loops (non-e()).
+    - output="approx": ONLY MLE fields in e()
+    - otherwise: also populate credible set fields in e() if available
     """
     _require_stata()
     from sfi import Matrix
@@ -202,11 +216,10 @@ def dbmle_to_eclass(
     inp = res.get("summary", {}).get("inputs", {})
     n_obs = float(inp.get("n", float("nan")))
 
-    # Temporary Stata matrix names (drop to avoid conflicts)
+    # Temp matrix names (drop every run)
     tmp_b = "__dbmle_b"
     tmp_V = "__dbmle_V"
     tmp_scs = "__dbmle_scs"
-
     _matrix_drop(tmp_b)
     _matrix_drop(tmp_V)
     _matrix_drop(tmp_scs)
@@ -224,7 +237,7 @@ def dbmle_to_eclass(
 
     Matrix.create(tmp_V, 4, 4, 0)  # placeholder zeros
 
-    # Prepare SCS (if requested and available)
+    # SCS prep (only if requested)
     scsmat_clause = ""
     union_cache: Dict[str, str] = {}
     if populate_scs:
@@ -247,13 +260,13 @@ def dbmle_to_eclass(
                 "theta00": get_union("theta00"),
             }
 
-            # These globals are read by the eclass Stata program
+            # globals consumed by the eclass program
             _global_set("_DBMLE_SCS_THETA11", union_cache["theta11"])
             _global_set("_DBMLE_SCS_THETA10", union_cache["theta10"])
             _global_set("_DBMLE_SCS_THETA01", union_cache["theta01"])
             _global_set("_DBMLE_SCS_THETA00", union_cache["theta00"])
 
-            # Numeric envelope matrix for easy Stata use
+            # numeric envelope matrix (min/max per type)
             if isinstance(intervals_obj, dict):
                 Matrix.create(tmp_scs, 4, 2, 0)
                 try:
@@ -261,7 +274,6 @@ def dbmle_to_eclass(
                     Matrix.setColNames(tmp_scs, ["min", "max"])
                 except Exception:
                     pass
-
                 keys = ["theta11", "theta10", "theta01", "theta00"]
                 for r, key in enumerate(keys):
                     lo, hi = _intervals_minmax(intervals_obj.get(key))
@@ -271,23 +283,25 @@ def dbmle_to_eclass(
                     else:
                         Matrix.storeAt(tmp_scs, r, 0, float(lo))
                         Matrix.storeAt(tmp_scs, r, 1, float(hi))
-
                 scsmat_clause = f" scsmat({tmp_scs})"
 
-    # Define and call the eclass program
+    # Ensure eclass program exists, then call it
     _ensure_sete_program()
-    cmd_lit = _stata_compound_quote(cmd_name)
-    title_lit = _stata_compound_quote(title)
 
-    _stata(
-        f"_dbmle_py_sete, bmat({tmp_b}) vmat({tmp_V}) "
-        f"n({n_obs}) level({float(level)}) kmle({int(k_mle)})"
-        f"{scsmat_clause} cmd({cmd_lit}) title({title_lit})"
+    # Note: cmd() and title() are parsed by Stata; keep them simple.
+    # We'll avoid complicated quoting: strip newlines and double quotes.
+    cmd_clean = (cmd_name or "dbmle").replace("\r", " ").replace("\n", " ").replace('"', "''")
+    title_clean = (title or "").replace("\r", " ").replace("\n", " ").replace('"', "''")
+
+    call = (
+        f'_dbmle_py_sete, bmat({tmp_b}) vmat({tmp_V}) '
+        f'n({n_obs}) level({float(level)}) kmle({int(k_mle)})'
+        f'{scsmat_clause} cmd("{cmd_clean}") title("{title_clean}")'
     )
+    _stata(call)
 
-    # Optional snapshots (non-e())
+    # Snapshots (outside e()) if prefix requested
     if store_snapshots and pfx:
-        # matrices
         _matrix_drop(f"{pfx}_b")
         _matrix_drop(f"{pfx}_V")
         Matrix.create(f"{pfx}_b", 1, 4, 0)
@@ -301,15 +315,13 @@ def dbmle_to_eclass(
         Matrix.storeAt(f"{pfx}_b", 0, 3, float(n_))
         Matrix.create(f"{pfx}_V", 4, 4, 0)
 
-        # scalars
-        _stata(f"capture scalar drop {pfx}_N")
-        _stata(f"capture scalar drop {pfx}_level")
-        _stata(f"capture scalar drop {pfx}_k_mle")
+        _scalar_drop(f"{pfx}_N")
+        _scalar_drop(f"{pfx}_level")
+        _scalar_drop(f"{pfx}_k_mle")
         _stata(f"scalar {pfx}_N = {n_obs}")
         _stata(f"scalar {pfx}_level = {float(level)}")
         _stata(f"scalar {pfx}_k_mle = {int(k_mle)}")
 
-        # SCS snapshots only if included
         if populate_scs and scsmat_clause:
             _matrix_drop(f"{pfx}_scs_minmax")
             Matrix.create(f"{pfx}_scs_minmax", 4, 2, 0)
@@ -317,7 +329,6 @@ def dbmle_to_eclass(
                 for c in range(2):
                     Matrix.storeAt(f"{pfx}_scs_minmax", r, c, Matrix.getAt(tmp_scs, r, c))
 
-            # exact unions as globals
             _global_set(f"{pfx}_scs_theta11", union_cache.get("theta11", ""))
             _global_set(f"{pfx}_scs_theta10", union_cache.get("theta10", ""))
             _global_set(f"{pfx}_scs_theta01", union_cache.get("theta01", ""))
