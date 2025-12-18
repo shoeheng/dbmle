@@ -13,6 +13,10 @@ except Exception:
     Scalar = Macro = Matrix = None
 
 
+# Use Python NaN as "missing" fill for Stata matrices
+MISSING = float("nan")
+
+
 def _require_stata() -> None:
     if Scalar is None or Macro is None or Matrix is None:
         raise RuntimeError(
@@ -41,12 +45,12 @@ def _set_intervals_matrix(
     """
     Store a union of integer intervals as an r() matrix with 2 columns [lo hi].
 
-    - intervals = [(lo,hi), (lo,hi), ...] -> r(<prefix><base_name>) is k x 2
-    - also stores r(<prefix><base_name>_k) = k (number of pieces) unless store_k=False
+      intervals = [(lo,hi), (lo,hi), ...] -> r(<prefix><base_name>) is k x 2
+      also store r(<prefix><base_name>_k) = k (number of pieces)
 
     If intervals is empty/None:
-      create a 1x2 matrix of missing (.) and set _k = 0
-      (this avoids 0-row-matrix quirks in some Stata contexts)
+      create a 1x2 matrix filled with missing and set _k = 0
+      (avoids 0-row matrix quirks in some Stata contexts)
     """
     _require_stata()
 
@@ -54,19 +58,17 @@ def _set_intervals_matrix(
     ksc = _rname(prefix, f"{base_name}_k")
 
     if not intervals:
-        Matrix.create(mat, 1, 2, .)
+        Matrix.create(mat, 1, 2, MISSING)
         if store_k:
             Scalar.setValue(ksc, 0.0)
         return
 
     k = len(intervals)
-    Matrix.create(mat, k, 2, .)
+    Matrix.create(mat, k, 2, MISSING)
 
     for i, (lo, hi) in enumerate(intervals):
-        lo_i = float(_safe_int(lo))
-        hi_i = float(_safe_int(hi))
-        Matrix.storeAt(mat, i, 0, lo_i)
-        Matrix.storeAt(mat, i, 1, hi_i)
+        Matrix.storeAt(mat, i, 0, float(_safe_int(lo)))
+        Matrix.storeAt(mat, i, 1, float(_safe_int(hi)))
 
     if store_k:
         Scalar.setValue(ksc, float(k))
@@ -120,7 +122,7 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     _require_stata()
 
     # ---- required structure ----
-    inp = res["summary"]["inputs"]  # expects xI1,xI0,xC1,xC0,n,m,c
+    inp = res["summary"]["inputs"]  # expects n,m,c
     outmode = res["meta"]["output"]
 
     mle = res.get("mle", {})
@@ -142,7 +144,7 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
 
     # All MLEs (ties) as matrix kx4
     k = len(mle_list)
-    Matrix.create(_rname(prefix, "mle_list"), k, 4, .)
+    Matrix.create(_rname(prefix, "mle_list"), k, 4, MISSING)
     try:
         Matrix.setColNames(_rname(prefix, "mle_list"), ["always", "complier", "defier", "never"])
     except Exception:
@@ -158,17 +160,20 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     Scalar.setValue(_rname(prefix, "num_mles"), float(num_mles))
 
     # ---- global SCS unions (only in exhaustive modes) ----
-    # We store as r(theta**_scs) matrices, not locals.
+    # Store as r(theta**_scs) matrices (k x 2), not locals.
     if outmode in ("basic", "auxiliary"):
         g = res.get("global_95_scs")
         if isinstance(g, dict):
-            # Preferred: structured intervals dict from core (exhaustive grid provides this)
+            # Preferred: structured intervals dict from core
             if isinstance(g.get("intervals"), dict):
                 _set_four_interval_mats_from_intervals_dict(prefix, "scs", g["intervals"])
             else:
-                # If core ever stops providing intervals, you should update core.to_dict()
-                # rather than parsing union_str back into pieces.
-                pass
+                # If intervals aren't provided, we can't reliably reconstruct pieces from union strings.
+                # Create "empty" matrices with k=0 so Stata code doesn't break.
+                _set_intervals_matrix(prefix=prefix, base_name="theta11_scs", intervals=None)
+                _set_intervals_matrix(prefix=prefix, base_name="theta10_scs", intervals=None)
+                _set_intervals_matrix(prefix=prefix, base_name="theta01_scs", intervals=None)
+                _set_intervals_matrix(prefix=prefix, base_name="theta00_scs", intervals=None)
 
     # ---- auxiliary-only exports ----
     if outmode == "auxiliary":
@@ -178,19 +183,31 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         lps = supports.get("largest_possible_support")
         if isinstance(lps, dict) and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
             _set_four_simple_interval_mats(prefix, "lps", lps)
+        else:
+            # ensure presence (optional)
+            pass
 
         # Estimated Fréchet bounds: stored as *_intervals
         efb = supports.get("estimated_frechet_bounds")
         if isinstance(efb, dict):
             _set_four_interval_mats_from_obj(prefix, "frechet", efb)
+        else:
+            _set_intervals_matrix(prefix=prefix, base_name="theta11_frechet", intervals=None)
+            _set_intervals_matrix(prefix=prefix, base_name="theta10_frechet", intervals=None)
+            _set_intervals_matrix(prefix=prefix, base_name="theta01_frechet", intervals=None)
+            _set_intervals_matrix(prefix=prefix, base_name="theta00_frechet", intervals=None)
 
         # 95% SCS within estimated Fréchet set: stored as *_intervals
         fscs = res.get("frechet_95_scs")
         if isinstance(fscs, dict):
             _set_four_interval_mats_from_obj(prefix, "frechet_scs", fscs)
+        else:
+            _set_intervals_matrix(prefix=prefix, base_name="theta11_frechet_scs", intervals=None)
+            _set_intervals_matrix(prefix=prefix, base_name="theta10_frechet_scs", intervals=None)
+            _set_intervals_matrix(prefix=prefix, base_name="theta01_frechet_scs", intervals=None)
+            _set_intervals_matrix(prefix=prefix, base_name="theta00_frechet_scs", intervals=None)
 
-        # Optional diagnostics string: cannot be stored as numeric r(), keep as local
-        # (Stata return macros are possible, but sfi support can vary across versions.)
+        # Optional diagnostics string: keep as local (string)
         diag = res.get("meta", {}).get("diagnostics_str")
         if isinstance(diag, str):
             Macro.setLocal(f"{prefix}diagnostics", diag)
@@ -222,7 +239,7 @@ def dbmle_to_r(
     level: float = 0.95,
     show_progress: bool = True,
     prefix: str = "",
-    return_result: bool = False
+    return_result: bool = False,
 ) -> Optional[DBMLEResult]:
     """
     Compute dbmle() and populate Stata outputs.
@@ -230,10 +247,10 @@ def dbmle_to_r(
     - r() scalars: n, m, c, theta??_mle, num_mles
     - r() matrix:  mle_list  (k x 4)
 
-    Interval unions are stored as r() matrices (k x 2), with companion scalar *_k:
+    Interval unions stored as r() matrices (k x 2) with companion scalar *_k:
       - r(theta11_scs), r(theta11_scs_k)  (and theta10/theta01/theta00)
       - auxiliary mode also:
-          r(theta??_lps), r(theta??_lps_k)           (1x2, k=1)
+          r(theta??_lps), r(theta??_lps_k)                 (1x2, k=1)
           r(theta??_frechet), r(theta??_frechet_k)
           r(theta??_frechet_scs), r(theta??_frechet_scs_k)
 
@@ -246,7 +263,6 @@ def dbmle_to_r(
         show_progress=show_progress,
     )
 
-    # core returns a DBMLEResult-like dict per your package design
     set_r_from_result(res, prefix=prefix)
 
     if return_result:
