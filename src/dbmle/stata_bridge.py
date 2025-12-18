@@ -264,7 +264,11 @@ def dbmle_to_r(
     )
 
     set_r_from_result(res, prefix=prefix)
-
+    
+    report = res.get("report")
+    if isinstance(report, str) and report.strip():
+        print(report)
+        
     if return_result:
         return res
     return None
