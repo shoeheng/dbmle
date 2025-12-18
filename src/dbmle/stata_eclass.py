@@ -39,11 +39,23 @@ def _ereturn_local(key: str, value: str) -> None:
     SFIToolkit.stata(f'ereturn local {key} "{v}"')
     
 def _matrix_drop(name: str) -> None:
-    """
-    Drop a Stata matrix if it exists, ignoring errors.
-    """
     from sfi import SFIToolkit
     SFIToolkit.stata(f"capture matrix drop {name}")
+
+
+def _hard_ereturn_clear() -> None:
+    """
+    Clear e() and also drop estimation matrices that can remain in the matrix namespace.
+    This prevents `ereturn post` from throwing 'name conflict' on repeated calls.
+    """
+    from sfi import SFIToolkit
+    # Drop common e() matrices first (they can persist as matrices even after ereturn clear)
+    SFIToolkit.stata("capture matrix drop e(b)")
+    SFIToolkit.stata("capture matrix drop e(V)")
+    SFIToolkit.stata("capture matrix drop e(mle_list)")
+    SFIToolkit.stata("capture matrix drop e(scs_minmax)")
+    # Now clear e()
+    SFIToolkit.stata("ereturn clear")
 
 
 def _global_macro_set(name: str, value: str) -> None:
@@ -133,7 +145,7 @@ def dbmle_to_eclass(
     )
 
     # Reset e()
-    _ereturn_clear()
+    _hard_ereturn_clear()
 
     # Pull MLE list
     mle = res.get("mle", {})
