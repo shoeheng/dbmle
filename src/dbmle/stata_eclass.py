@@ -115,43 +115,35 @@ def _intervals_minmax(intervals: Optional[List[List[int]]]) -> Tuple[Optional[in
 def _ensure_sete_program() -> None:
     """
     Define a tiny Stata eclass program in memory (no .ado).
-    Safe to call repeatedly.
+    Must send one command at a time to SFIToolkit.stata().
     """
-    _stata("capture program drop _dbmle_py_sete")
-    _stata(r"""
-program define _dbmle_py_sete, eclass
-    version 17
-    // Required: bmat, vmat, N, level, kmle
-    // Optional: scsmat, and globals holding union strings
-    syntax , BMAT(name) VMAT(name) N(real) LEVEL(real) KMLE(integer) ///
-            [ SCSMAT(name) CMD(string) TITLE(string) ]
+    cmds = [
+        "capture program drop _dbmle_py_sete",
+        "program define _dbmle_py_sete, eclass",
+        "    version 17",
+        "    syntax , BMAT(name) VMAT(name) N(real) LEVEL(real) KMLE(integer) [ SCSMAT(name) CMD(string) TITLE(string) ]",
+        "    ereturn clear",
+        "    ereturn post `bmat' `vmat'",
+        "    ereturn scalar N     = `n'",
+        "    ereturn scalar level = `level'",
+        "    ereturn scalar k_mle = `kmle'",
+        "    if (\"`cmd'\"==\"\")   ereturn local cmd   \"dbmle\"",
+        "    else                  ereturn local cmd   \"`cmd'\"",
+        "    if (\"`title'\"==\"\") ereturn local title \"Design-based MLE counts (Always/Complier/Defier/Never)\"",
+        "    else                   ereturn local title \"`title'\"",
+        "    ereturn local properties \"b V\"",
+        "    if (\"`scsmat'\" != \"\") {",
+        "        ereturn matrix scs_minmax = `scsmat'",
+        "        ereturn local scs_theta11 \"${_DBMLE_SCS_THETA11}\"",
+        "        ereturn local scs_theta10 \"${_DBMLE_SCS_THETA10}\"",
+        "        ereturn local scs_theta01 \"${_DBMLE_SCS_THETA01}\"",
+        "        ereturn local scs_theta00 \"${_DBMLE_SCS_THETA00}\"",
+        "    }",
+        "end",
+    ]
+    for c in cmds:
+        _stata(c)
 
-    ereturn clear
-    // Register b and V
-    ereturn post `bmat' `vmat'
-
-    // Standard scalars
-    ereturn scalar N     = `n'
-    ereturn scalar level = `level'
-    ereturn scalar k_mle = `kmle'
-
-    // Metadata
-    if ("`cmd'"=="")   ereturn local cmd   "dbmle"
-    else              ereturn local cmd   "`cmd'"
-    if ("`title'"=="") ereturn local title "Design-based MLE counts (Always/Complier/Defier/Never)"
-    else               ereturn local title "`title'"
-    ereturn local properties "b V"
-
-    // Credible set if provided
-    if ("`scsmat'" != "") {
-        ereturn matrix scs_minmax = `scsmat'
-        ereturn local scs_theta11 "${_DBMLE_SCS_THETA11}"
-        ereturn local scs_theta10 "${_DBMLE_SCS_THETA10}"
-        ereturn local scs_theta01 "${_DBMLE_SCS_THETA01}"
-        ereturn local scs_theta00 "${_DBMLE_SCS_THETA00}"
-    }
-end
-""")
 
 
 # ----------------------------
