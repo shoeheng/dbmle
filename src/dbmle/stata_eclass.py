@@ -8,18 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from dbmle.core import dbmle as _dbmle
 
 
-# ----------------------------
-# small Stata helpers
-# ----------------------------
 def _require_stata() -> None:
     try:
         import sfi  # noqa: F401
     except Exception as e:
         raise RuntimeError(
-            "Run this inside Stata's embedded Python:\n"
-            "    python:\n"
-            "        ...\n"
-            "    end"
+            "Run inside Stata's embedded Python (within a `python:` ... `end` block)."
         ) from e
 
 
@@ -29,42 +23,11 @@ def _stata(cmd: str) -> None:
 
 
 def _matrix_drop(name: str) -> None:
-    # Works for normal matrices; for e(b) style names use quotes in capture if needed
     _stata(f"capture matrix drop {name}")
 
 
-def _ereturn_clear_hard() -> None:
-    """
-    Clears e() AND drops common e() matrices that sometimes linger as matrices.
-    """
-    _stata("capture ereturn clear")
-    # Defensive: drop both named and e()-namespaced matrices
-    _stata("capture matrix drop e(b)")
-    _stata("capture matrix drop e(V)")
-    _stata("capture matrix drop e(mle_list)")
-    _stata("capture matrix drop e(scs_minmax)")
-
-
-def _ereturn_local(key: str, value: str) -> None:
-    v = value.replace('"', '""')
-    _stata(f'ereturn local {key} "{v}"')
-
-
-def _ereturn_scalar(key: str, value: float) -> None:
-    # key should be bare name; Stata stores as e(<key>)
-    _stata(f"ereturn scalar {key} = {value}")
-
-
-def _ereturn_matrix(key: str, source_matrix_name: str) -> None:
-    """
-    Store matrix into e(): ereturn matrix <key> = <source>
-    Example: key="b" source="__dbmle_b123"
-    """
-    _stata(f"ereturn matrix {key} = {source_matrix_name}")
-
-
 def _global_set(name: str, value: str) -> None:
-    v = value.replace('"', '""')
+    v = str(value).replace('"', '""')
     _stata(f'global {name} "{v}"')
 
 
@@ -76,14 +39,11 @@ def _validate_prefix(prefix: str) -> str:
         return ""
     if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", prefix):
         raise ValueError(
-            f"Invalid prefix '{prefix}'. Use letters/digits/underscore; start with a letter/underscore."
+            f"Invalid prefix '{prefix}'. Use letters/digits/underscore; start with letter/underscore."
         )
     return prefix
 
 
-# ----------------------------
-# credible set formatting
-# ----------------------------
 def _intervals_to_union_str(intervals: Optional[List[List[int]]]) -> str:
     if not intervals:
         return ""
@@ -96,6 +56,48 @@ def _intervals_minmax(intervals: Optional[List[List[int]]]) -> Tuple[Optional[in
     lo = min(int(seg[0]) for seg in intervals)
     hi = max(int(seg[1]) for seg in intervals)
     return lo, hi
+
+
+def _ensure_sete_program() -> None:
+    """
+    Define a tiny Stata eclass program in memory (no .ado).
+    Safe to call repeatedly.
+    """
+    _stata("capture program drop _dbmle_py_sete")
+    _stata(r"""
+program define _dbmle_py_sete, eclass
+    version 17
+    // Required: bmat, vmat, N, level, kmle
+    // Optional: scsmat (4x2), and globals holding union strings
+    syntax , BMAT(name) VMAT(name) N(real) LEVEL(real) KMLE(integer) ///
+            [ SCSMAT(name) CMD(string) TITLE(string) ]
+
+    ereturn clear
+    // register b and V
+    ereturn post `bmat' `vmat'
+
+    // standard fields
+    ereturn scalar N     = `n'
+    ereturn scalar level = `level'
+    ereturn scalar k_mle = `kmle'
+
+    // metadata
+    if ("`cmd'"=="")   ereturn local cmd   "dbmle"
+    else              ereturn local cmd   "`cmd'"
+    if ("`title'"=="") ereturn local title "Design-based MLE counts (Always/Complier/Defier/Never)"
+    else               ereturn local title "`title'"
+    ereturn local properties "b V"
+
+    // credible set if provided
+    if ("`scsmat'" != "") {
+        ereturn matrix scs_minmax = `scsmat'
+        ereturn local scs_theta11 "${_DBMLE_SCS_THETA11}"
+        ereturn local scs_theta10 "${_DBMLE_SCS_THETA10}"
+        ereturn local scs_theta01 "${_DBMLE_SCS_THETA01}"
+        ereturn local scs_theta00 "${_DBMLE_SCS_THETA00}"
+    }
+end
+""")
 
 
 def dbmle_to_eclass(
@@ -114,32 +116,23 @@ def dbmle_to_eclass(
     return_result: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """
-    Pure-Python Stata bridge: writes dbmle results into e().
+    Compute dbmle in Python; populate Stata e() via an in-memory eclass program.
 
-    - Always populates:
-        e(b) : 1x4 MLE counts [always, complier, defier, never]
-        e(V) : 4x4 zero placeholder
-        e(N), e(level), e(k_mle)
-        e(cmd), e(title), e(properties)
+    output="approx"  -> only MLE in e(b) (no SCS fields)
+    output!= "approx"-> also populate SCS fields if present
 
-    - Populates SCS only when output != "approx":
-        e(scs_minmax) as 4x2 (min,max envelope)
-        e(scs_theta11/10/01/00) as e()-locals (exact unions as strings)
-
-    - Optional snapshots when prefix is given:
-        matrices: <prefix>_b, <prefix>_V, <prefix>_scs_minmax (if applicable)
-        scalars : <prefix>_N, <prefix>_level, <prefix>_k_mle
-        globals : ${<prefix>_scs_theta11}, ... (if applicable)
-
-    Note: e() always holds only the *latest* estimation (Stata design).
+    prefix snapshots (optional) create:
+      matrices: <prefix>_b, <prefix>_V, <prefix>_scs_minmax (if applicable)
+      scalars : scalar <prefix>_N, <prefix>_level, <prefix>_k_mle
+      globals : ${<prefix>_scs_theta11}, ... (if applicable)
     """
     _require_stata()
-    from sfi import Matrix  # only used to build numeric matrices safely
+    from sfi import Matrix
 
     pfx = _validate_prefix(prefix)
     populate_scs = (output != "approx")
 
-    # Run dbmle in Python
+    # Run dbmle
     res = _dbmle(
         xI1, xI0, xC1, xC0,
         output=output,
@@ -147,10 +140,6 @@ def dbmle_to_eclass(
         show_progress=show_progress,
     )
 
-    # Hard clear e()
-    _ereturn_clear_hard()
-
-    # Pull MLE list
     mle = res.get("mle", {})
     mle_list = mle.get("mle_list", [])
     if not mle_list:
@@ -159,13 +148,19 @@ def dbmle_to_eclass(
     a, c_, d, n_ = mle_list[0]
     k_mle = len(mle_list)
 
-    # Build temporary matrices with unique-ish names and drop first
+    inp = res.get("summary", {}).get("inputs", {})
+    n_obs = float(inp.get("n", float("nan")))
+
+    # Temp matrix names (drop every run to avoid conflicts)
     tmp_b = "__dbmle_b"
     tmp_V = "__dbmle_V"
+    tmp_scs = "__dbmle_scs"
+
     _matrix_drop(tmp_b)
     _matrix_drop(tmp_V)
+    _matrix_drop(tmp_scs)
 
-    # temp b
+    # Build b and V
     Matrix.create(tmp_b, 1, 4, 0)
     try:
         Matrix.setColNames(tmp_b, ["always", "complier", "defier", "never"])
@@ -176,46 +171,15 @@ def dbmle_to_eclass(
     Matrix.storeAt(tmp_b, 0, 2, float(d))
     Matrix.storeAt(tmp_b, 0, 3, float(n_))
 
-    # temp V (placeholder zeros)
-    Matrix.create(tmp_V, 4, 4, 0)
+    Matrix.create(tmp_V, 4, 4, 0)  # placeholder
 
-    # Store into e() WITHOUT ereturn post
-    _ereturn_matrix("b", tmp_b)
-    _ereturn_matrix("V", tmp_V)
-
-    # Scalars
-    inp = res.get("summary", {}).get("inputs", {})
-    n_obs = inp.get("n", None)
-    if n_obs is not None:
-        _ereturn_scalar("N", float(n_obs))
-    _ereturn_scalar("level", float(level))
-    _ereturn_scalar("k_mle", float(k_mle))
-
-    # Locals (macros)
-    _ereturn_local("cmd", cmd_name)
-    _ereturn_local("title", title)
-    _ereturn_local("properties", "b V")
-
-    # Optional: store all tied MLEs as e(mle_list)
-    if k_mle > 1:
-        _matrix_drop("e(mle_list)")
-        Matrix.create("e(mle_list)", k_mle, 4, 0)
-        try:
-            Matrix.setColNames("e(mle_list)", ["always", "complier", "defier", "never"])
-        except Exception:
-            pass
-        for i, (aa, cc, dd, nn) in enumerate(mle_list):
-            Matrix.storeAt("e(mle_list)", i, 0, float(aa))
-            Matrix.storeAt("e(mle_list)", i, 1, float(cc))
-            Matrix.storeAt("e(mle_list)", i, 2, float(dd))
-            Matrix.storeAt("e(mle_list)", i, 3, float(nn))
-
-    # SCS only if NOT approx
+    # Prepare SCS globals + matrix if needed
+    scsmat_clause = ""
     if populate_scs:
         g = res.get("global_95_scs", None)
         if isinstance(g, dict):
-            intervals_obj = g.get("intervals", None)   # dict: theta11/theta10/theta01/theta00 -> segments
-            union_str_obj = g.get("union_str", None)   # optional dict of strings
+            intervals_obj = g.get("intervals", None)
+            union_str_obj = g.get("union_str", None)
 
             def get_union(key: str) -> str:
                 if isinstance(union_str_obj, dict) and union_str_obj.get(key):
@@ -224,38 +188,47 @@ def dbmle_to_eclass(
                     return _intervals_to_union_str(intervals_obj.get(key))
                 return ""
 
-            # exact unions as e()-locals
-            _ereturn_local("scs_theta11", get_union("theta11"))
-            _ereturn_local("scs_theta10", get_union("theta10"))
-            _ereturn_local("scs_theta01", get_union("theta01"))
-            _ereturn_local("scs_theta00", get_union("theta00"))
+            # These globals are read by the eclass Stata program
+            _global_set("_DBMLE_SCS_THETA11", get_union("theta11"))
+            _global_set("_DBMLE_SCS_THETA10", get_union("theta10"))
+            _global_set("_DBMLE_SCS_THETA01", get_union("theta01"))
+            _global_set("_DBMLE_SCS_THETA00", get_union("theta00"))
 
-            # numeric envelope matrix
             if isinstance(intervals_obj, dict):
-                _matrix_drop("e(scs_minmax)")
-                Matrix.create("e(scs_minmax)", 4, 2, 0)
+                Matrix.create(tmp_scs, 4, 2, 0)
                 try:
-                    Matrix.setRowNames("e(scs_minmax)", ["always", "complier", "defier", "never"])
-                    Matrix.setColNames("e(scs_minmax)", ["min", "max"])
+                    Matrix.setRowNames(tmp_scs, ["always", "complier", "defier", "never"])
+                    Matrix.setColNames(tmp_scs, ["min", "max"])
                 except Exception:
                     pass
-
                 keys = ["theta11", "theta10", "theta01", "theta00"]
                 for r, key in enumerate(keys):
                     lo, hi = _intervals_minmax(intervals_obj.get(key))
                     if lo is None or hi is None:
-                        Matrix.storeAt("e(scs_minmax)", r, 0, float("nan"))
-                        Matrix.storeAt("e(scs_minmax)", r, 1, float("nan"))
+                        Matrix.storeAt(tmp_scs, r, 0, float("nan"))
+                        Matrix.storeAt(tmp_scs, r, 1, float("nan"))
                     else:
-                        Matrix.storeAt("e(scs_minmax)", r, 0, float(lo))
-                        Matrix.storeAt("e(scs_minmax)", r, 1, float(hi))
+                        Matrix.storeAt(tmp_scs, r, 0, float(lo))
+                        Matrix.storeAt(tmp_scs, r, 1, float(hi))
 
-    # Snapshots (non-e()) if prefix requested
+                scsmat_clause = f" scsmat({tmp_scs})"
+
+    # Define eclass program and invoke it (this is what allows setting e())
+    _ensure_sete_program()
+
+    cmd_esc = cmd_name.replace('"', '""')
+    title_esc = title.replace('"', '""')
+
+    _stata(
+        f'_dbmle_py_sete, bmat({tmp_b}) vmat({tmp_V}) '
+        f'n({n_obs}) level({float(level)}) kmle({int(k_mle)})'
+        f'{scsmat_clause} cmd("{cmd_esc}") title("{title_esc}")'
+    )
+
+    # Optional snapshots (outside e())
     if store_snapshots and pfx:
-        # matrices
         _matrix_drop(f"{pfx}_b")
         _matrix_drop(f"{pfx}_V")
-
         Matrix.create(f"{pfx}_b", 1, 4, 0)
         try:
             Matrix.setColNames(f"{pfx}_b", ["always", "complier", "defier", "never"])
@@ -265,19 +238,28 @@ def dbmle_to_eclass(
         Matrix.storeAt(f"{pfx}_b", 0, 1, float(c_))
         Matrix.storeAt(f"{pfx}_b", 0, 2, float(d))
         Matrix.storeAt(f"{pfx}_b", 0, 3, float(n_))
-
         Matrix.create(f"{pfx}_V", 4, 4, 0)
 
-        # scalars (as Stata scalars, not e())
-        if n_obs is not None:
-            _stata(f"scalar {pfx}_N = {float(n_obs)}")
+        _stata(f"capture scalar drop {pfx}_N")
+        _stata(f"capture scalar drop {pfx}_level")
+        _stata(f"capture scalar drop {pfx}_k_mle")
+        _stata(f"scalar {pfx}_N = {n_obs}")
         _stata(f"scalar {pfx}_level = {float(level)}")
-        _stata(f"scalar {pfx}_k_mle = {float(k_mle)}")
+        _stata(f"scalar {pfx}_k_mle = {int(k_mle)}")
 
-        if populate_scs and isinstance(res.get("global_95_scs", None), dict):
-            g = res["global_95_scs"]
-            intervals_obj = g.get("intervals", None)
-            union_str_obj = g.get("union_str", None)
+        if populate_scs and scsmat_clause:
+            _matrix_drop(f"{pfx}_scs_minmax")
+            Matrix.create(f"{pfx}_scs_minmax", 4, 2, 0)
+            for r in range(4):
+                for c in range(2):
+                    Matrix.storeAt(f"{pfx}_scs_minmax", r, c, Matrix.getAt(tmp_scs, r, c))
+
+            _global_set(f"{pfx}_scs_theta11", _stata('display "${_DBMLE_SCS_THETA11}"') or "")
+            # Above is awkward; better: just re-set from Python strings:
+            # (so do that instead)
+            g = res.get("global_95_scs", {})
+            intervals_obj = g.get("intervals", {})
+            union_str_obj = g.get("union_str", {})
 
             def get_union(key: str) -> str:
                 if isinstance(union_str_obj, dict) and union_str_obj.get(key):
@@ -291,26 +273,9 @@ def dbmle_to_eclass(
             _global_set(f"{pfx}_scs_theta01", get_union("theta01"))
             _global_set(f"{pfx}_scs_theta00", get_union("theta00"))
 
-            if isinstance(intervals_obj, dict):
-                _matrix_drop(f"{pfx}_scs_minmax")
-                Matrix.create(f"{pfx}_scs_minmax", 4, 2, 0)
-                try:
-                    Matrix.setRowNames(f"{pfx}_scs_minmax", ["always", "complier", "defier", "never"])
-                    Matrix.setColNames(f"{pfx}_scs_minmax", ["min", "max"])
-                except Exception:
-                    pass
-                keys = ["theta11", "theta10", "theta01", "theta00"]
-                for r, key in enumerate(keys):
-                    lo, hi = _intervals_minmax(intervals_obj.get(key))
-                    if lo is None or hi is None:
-                        Matrix.storeAt(f"{pfx}_scs_minmax", r, 0, float("nan"))
-                        Matrix.storeAt(f"{pfx}_scs_minmax", r, 1, float("nan"))
-                    else:
-                        Matrix.storeAt(f"{pfx}_scs_minmax", r, 0, float(lo))
-                        Matrix.storeAt(f"{pfx}_scs_minmax", r, 1, float(hi))
-
-    # Cleanup temp matrices (optional)
+    # Clean temp matrices
     _matrix_drop(tmp_b)
     _matrix_drop(tmp_V)
+    _matrix_drop(tmp_scs)
 
     return res if return_result else None
