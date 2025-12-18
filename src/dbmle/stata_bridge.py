@@ -1,7 +1,7 @@
 # src/dbmle/stata_bridge.py
 
 from __future__ import annotations
-from typing import Any, Dict, Tuple, List
+from typing import Any, Dict, Tuple, List, Optional
 
 import dbmle.core as core
 from dbmle.core import DBMLEResult
@@ -21,63 +21,99 @@ def _require_stata() -> None:
         )
 
 
-def _set_union_locals(prefix: str, base_name: str, union_str: Dict[str, str]) -> None:
-    """
-    Store union-of-interval strings as Stata locals like:
-      `<prefix>theta11_<base_name>' etc.
-    """
-    Macro.setLocal(f"{prefix}theta11_{base_name}", union_str["theta11"])
-    Macro.setLocal(f"{prefix}theta10_{base_name}", union_str["theta10"])
-    Macro.setLocal(f"{prefix}theta01_{base_name}", union_str["theta01"])
-    Macro.setLocal(f"{prefix}theta00_{base_name}", union_str["theta00"])
+def _rname(prefix: str, name: str) -> str:
+    """Return-name helper for Stata r() objects."""
+    return f"r({prefix}{name})"
 
-def _intervals_to_union_str(intervals) -> str:
+
+def _safe_int(x: Any) -> int:
+    """Best-effort conversion to Python int (handles numpy ints)."""
+    return int(x)
+
+
+def _set_intervals_matrix(
+    *,
+    prefix: str,
+    base_name: str,
+    intervals: Optional[List[Tuple[Any, Any]]],
+    store_k: bool = True,
+) -> None:
     """
-    Convert a list of [lo, hi] (or (lo, hi)) into a union string:
-      [[1,2],[5,7]] -> "[1,2] U [5,7]"
-    Accepts intervals=None, empty list, numpy ints, etc.
+    Store a union of integer intervals as an r() matrix with 2 columns [lo hi].
+
+    - intervals = [(lo,hi), (lo,hi), ...] -> r(<prefix><base_name>) is k x 2
+    - also stores r(<prefix><base_name>_k) = k (number of pieces) unless store_k=False
+
+    If intervals is empty/None:
+      create a 1x2 matrix of missing (.) and set _k = 0
+      (this avoids 0-row-matrix quirks in some Stata contexts)
     """
+    _require_stata()
+
+    mat = _rname(prefix, base_name)
+    ksc = _rname(prefix, f"{base_name}_k")
+
     if not intervals:
-        return ""
+        Matrix.create(mat, 1, 2, .)
+        if store_k:
+            Scalar.setValue(ksc, 0.0)
+        return
 
-    parts = []
-    for seg in intervals:
-        lo, hi = seg
-        lo_i, hi_i = int(lo), int(hi)
-        parts.append(f"[{lo_i},{hi_i}]")
-    return " U ".join(parts)
+    k = len(intervals)
+    Matrix.create(mat, k, 2, .)
 
-def _set_union_locals_from_intervals(prefix: str, base_name: str, obj: Dict[str, Any]) -> None:
-    """
-    obj must have keys like theta11_intervals, theta10_intervals, ...
-    """
-    Macro.setLocal(f"{prefix}theta11_{base_name}", _intervals_to_union_str(obj.get("theta11_intervals")))
-    Macro.setLocal(f"{prefix}theta10_{base_name}", _intervals_to_union_str(obj.get("theta10_intervals")))
-    Macro.setLocal(f"{prefix}theta01_{base_name}", _intervals_to_union_str(obj.get("theta01_intervals")))
-    Macro.setLocal(f"{prefix}theta00_{base_name}", _intervals_to_union_str(obj.get("theta00_intervals")))
+    for i, (lo, hi) in enumerate(intervals):
+        lo_i = float(_safe_int(lo))
+        hi_i = float(_safe_int(hi))
+        Matrix.storeAt(mat, i, 0, lo_i)
+        Matrix.storeAt(mat, i, 1, hi_i)
 
-def _set_interval_locals(prefix: str, base_name: str, intervals) -> None:
+    if store_k:
+        Scalar.setValue(ksc, float(k))
+
+
+def _set_four_interval_mats_from_obj(prefix: str, suffix: str, obj: Dict[str, Any]) -> None:
     """
-    Store simple [lo,hi] integer intervals as Stata locals like:
-      `<prefix>theta11_<base_name>' = "[lo,hi]"
+    obj must have keys like:
+      theta11_intervals, theta10_intervals, theta01_intervals, theta00_intervals
+    Each value is a list of (lo,hi) segments (possibly empty).
+    """
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta11_{suffix}", intervals=obj.get("theta11_intervals"))
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta10_{suffix}", intervals=obj.get("theta10_intervals"))
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta01_{suffix}", intervals=obj.get("theta01_intervals"))
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta00_{suffix}", intervals=obj.get("theta00_intervals"))
+
+
+def _set_four_interval_mats_from_intervals_dict(prefix: str, suffix: str, intervals_dict: Dict[str, Any]) -> None:
+    """
+    intervals_dict must have keys:
+      theta11, theta10, theta01, theta00
+    Each value is a list of (lo,hi) segments (possibly empty).
+    """
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta11_{suffix}", intervals=intervals_dict.get("theta11"))
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta10_{suffix}", intervals=intervals_dict.get("theta10"))
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta01_{suffix}", intervals=intervals_dict.get("theta01"))
+    _set_intervals_matrix(prefix=prefix, base_name=f"theta00_{suffix}", intervals=intervals_dict.get("theta00"))
+
+
+def _set_four_simple_interval_mats(prefix: str, suffix: str, bounds: Dict[str, Tuple[Any, Any]]) -> None:
+    """
+    bounds must have keys:
+      theta11: (lo,hi), theta10: (lo,hi), theta01: (lo,hi), theta00: (lo,hi)
+
+    Stored as 1x2 matrices in r().
     """
     for key in ("theta11", "theta10", "theta01", "theta00"):
-        lo, hi = intervals[key]
-        lo_i = int(lo)
-        hi_i = int(hi)
-
-        name = f"{prefix}{key}_{base_name}"
-        value = f"[{lo_i},{hi_i}]"
-        value = value.replace("\n", " ").replace("\r", " ")
-        Macro.setLocal(name, value)
+        lo, hi = bounds[key]
+        _set_intervals_matrix(prefix=prefix, base_name=f"{key}_{suffix}", intervals=[(lo, hi)])
 
 
 def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     """
-    Write results into Stata.
+    Write results into Stata r().
 
     - Numeric outputs -> r() scalars / matrices
-    - Set-valued outputs (interval unions) -> locals (strings)
+    - Interval unions -> r() matrices (k x 2), with companion scalar r(<name>_k)
 
     prefix: optional prefix for names, e.g. prefix="dbmle_" -> r(dbmle_n), etc.
     """
@@ -92,64 +128,69 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     if not mle_list:
         raise RuntimeError("Result missing mle.mle_list; cannot populate r(mle_list).")
 
-    def rname(name: str) -> str:
-        return f"r({prefix}{name})"
-
     # ---- scalars always available ----
-    Scalar.setValue(rname("n"), float(inp["n"]))
-    Scalar.setValue(rname("m"), float(inp["m"]))
-    Scalar.setValue(rname("c"), float(inp["c"]))
+    Scalar.setValue(_rname(prefix, "n"), float(inp["n"]))
+    Scalar.setValue(_rname(prefix, "m"), float(inp["m"]))
+    Scalar.setValue(_rname(prefix, "c"), float(inp["c"]))
 
     # First MLE as scalars
     t11, t10, t01, t00 = mle_list[0]
-    Scalar.setValue(rname("theta11_mle"), float(t11))
-    Scalar.setValue(rname("theta10_mle"), float(t10))
-    Scalar.setValue(rname("theta01_mle"), float(t01))
-    Scalar.setValue(rname("theta00_mle"), float(t00))
+    Scalar.setValue(_rname(prefix, "theta11_mle"), float(t11))
+    Scalar.setValue(_rname(prefix, "theta10_mle"), float(t10))
+    Scalar.setValue(_rname(prefix, "theta01_mle"), float(t01))
+    Scalar.setValue(_rname(prefix, "theta00_mle"), float(t00))
 
-    # All MLEs (ties) as matrix kx4 (0-based indexing for sfi.Matrix.storeAt)
+    # All MLEs (ties) as matrix kx4
     k = len(mle_list)
-    Matrix.create(rname("mle_list"), k, 4, 0)
-
-    # Try to set column names inside the matrix itself (avoids Stata parser quirks later).
-    # If the installed sfi.Matrix doesn't support setColNames, this silently does nothing.
+    Matrix.create(_rname(prefix, "mle_list"), k, 4, .)
     try:
-        Matrix.setColNames(rname("mle_list"), ["always", "complier", "defier", "never"])
+        Matrix.setColNames(_rname(prefix, "mle_list"), ["always", "complier", "defier", "never"])
     except Exception:
         pass
 
-    for i, (a, c_, d, n_) in enumerate(mle_list):  # i = 0..k-1
-        Matrix.storeAt(rname("mle_list"), i, 0, float(a))
-        Matrix.storeAt(rname("mle_list"), i, 1, float(c_))
-        Matrix.storeAt(rname("mle_list"), i, 2, float(d))
-        Matrix.storeAt(rname("mle_list"), i, 3, float(n_))
+    for i, (a, c_, d, n_) in enumerate(mle_list):
+        Matrix.storeAt(_rname(prefix, "mle_list"), i, 0, float(a))
+        Matrix.storeAt(_rname(prefix, "mle_list"), i, 1, float(c_))
+        Matrix.storeAt(_rname(prefix, "mle_list"), i, 2, float(d))
+        Matrix.storeAt(_rname(prefix, "mle_list"), i, 3, float(n_))
+
+    num_mles = len(mle_list)
+    Scalar.setValue(_rname(prefix, "num_mles"), float(num_mles))
 
     # ---- global SCS unions (only in exhaustive modes) ----
+    # We store as r(theta**_scs) matrices, not locals.
     if outmode in ("basic", "auxiliary"):
         g = res.get("global_95_scs")
-        if g and "union_str" in g:
-            _set_union_locals(prefix, "scs", g["union_str"])
+        if isinstance(g, dict):
+            # Preferred: structured intervals dict from core (exhaustive grid provides this)
+            if isinstance(g.get("intervals"), dict):
+                _set_four_interval_mats_from_intervals_dict(prefix, "scs", g["intervals"])
+            else:
+                # If core ever stops providing intervals, you should update core.to_dict()
+                # rather than parsing union_str back into pieces.
+                pass
 
-    # ---- auxiliary-only exports (correct key paths) ----
+    # ---- auxiliary-only exports ----
     if outmode == "auxiliary":
         supports = res.get("supports", {})
 
-        # Largest Possible Support
+        # Largest Possible Support (simple contiguous bounds)
         lps = supports.get("largest_possible_support")
-        if lps and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
-            _set_interval_locals(prefix, "lps", lps)
+        if isinstance(lps, dict) and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
+            _set_four_simple_interval_mats(prefix, "lps", lps)
 
-        # Estimated Fréchet bounds: stored as *_intervals in supports["estimated_frechet_bounds"]
+        # Estimated Fréchet bounds: stored as *_intervals
         efb = supports.get("estimated_frechet_bounds")
         if isinstance(efb, dict):
-            _set_union_locals_from_intervals(prefix, "frechet", efb)
-        
-        # 95% SCS within estimated Fréchet set: stored as *_intervals in res["frechet_95_scs"]
+            _set_four_interval_mats_from_obj(prefix, "frechet", efb)
+
+        # 95% SCS within estimated Fréchet set: stored as *_intervals
         fscs = res.get("frechet_95_scs")
         if isinstance(fscs, dict):
-            _set_union_locals_from_intervals(prefix, "frechet_scs", fscs)
+            _set_four_interval_mats_from_obj(prefix, "frechet_scs", fscs)
 
-        # Optional: store additional diagnostics if present
+        # Optional diagnostics string: cannot be stored as numeric r(), keep as local
+        # (Stata return macros are possible, but sfi support can vary across versions.)
         diag = res.get("meta", {}).get("diagnostics_str")
         if isinstance(diag, str):
             Macro.setLocal(f"{prefix}diagnostics", diag)
@@ -160,19 +201,16 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         if isinstance(approx_meta, str):
             Macro.setLocal(f"{prefix}approx", approx_meta)
 
-    # Store full printable report as a local if present
+    # Printable report: keep as local (string)
     if "report" in res and isinstance(res["report"], str):
         Macro.setLocal(f"{prefix}report", res["report"])
-    
-    num_mles = len(mle_list)
-    Scalar.setValue(rname("num_mles"), float(num_mles))
-    
+
     if num_mles > 1:
-        # Message to Stata Results window (works inside Stata python)
         print(
             f"[dbmle] NOTE: {num_mles} tied MLEs detected. "
-            f"See matrix {rname('mle_list')} for all solutions."
+            f"See matrix {_rname(prefix, 'mle_list')} for all solutions."
         )
+
 
 def dbmle_to_r(
     xI1: int,
@@ -185,19 +223,21 @@ def dbmle_to_r(
     show_progress: bool = True,
     prefix: str = "",
     return_result: bool = False
-) -> DBMLEResult:
+) -> Optional[DBMLEResult]:
     """
     Compute dbmle() and populate Stata outputs.
 
-    - r() scalars: n, m, c, theta??_mle
+    - r() scalars: n, m, c, theta??_mle, num_mles
     - r() matrix:  mle_list  (k x 4)
-    - locals:      <prefix>theta??_scs
-                   plus auxiliary locals when output="auxiliary":
-                     <prefix>theta??_lps
-                     <prefix>theta??_frechet
-                     <prefix>theta??_frechet_scs
 
-    Returns the DBMLEResult as well.
+    Interval unions are stored as r() matrices (k x 2), with companion scalar *_k:
+      - r(theta11_scs), r(theta11_scs_k)  (and theta10/theta01/theta00)
+      - auxiliary mode also:
+          r(theta??_lps), r(theta??_lps_k)           (1x2, k=1)
+          r(theta??_frechet), r(theta??_frechet_k)
+          r(theta??_frechet_scs), r(theta??_frechet_scs_k)
+
+    Returns the DBMLEResult iff return_result=True, else None.
     """
     res = core.dbmle(
         xI1, xI0, xC1, xC0,
@@ -206,7 +246,9 @@ def dbmle_to_r(
         show_progress=show_progress,
     )
 
+    # core returns a DBMLEResult-like dict per your package design
     set_r_from_result(res, prefix=prefix)
+
     if return_result:
         return res
     return None
