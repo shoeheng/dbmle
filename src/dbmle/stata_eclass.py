@@ -37,6 +37,13 @@ def _ereturn_local(key: str, value: str) -> None:
     from sfi import SFIToolkit
     v = value.replace('"', '""')
     SFIToolkit.stata(f'ereturn local {key} "{v}"')
+    
+def _matrix_drop(name: str) -> None:
+    """
+    Drop a Stata matrix if it exists, ignoring errors.
+    """
+    from sfi import SFIToolkit
+    SFIToolkit.stata(f"capture matrix drop {name}")
 
 
 def _global_macro_set(name: str, value: str) -> None:
@@ -137,6 +144,9 @@ def dbmle_to_eclass(
     a, c_, d, n_ = mle_list[0]
 
     # Build temporary matrices, then ereturn post to create e(b), e(V)
+    _matrix_drop("DBMLE_b")
+    _matrix_drop("DBMLE_V")
+    
     Matrix.create("DBMLE_b", 1, 4, 0)
     try:
         Matrix.setColNames("DBMLE_b", ["always", "complier", "defier", "never"])
