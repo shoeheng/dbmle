@@ -70,8 +70,13 @@ def _ereturn_local(key: str, value: str) -> None:
 
 
 def _global_set(name: str, value: str) -> None:
-    lit = _stata_compound_quote(value)
-    _stata(f"global {name} {lit}")
+    """
+    Set a Stata global macro safely (no Stata command parsing / quoting).
+    """
+    from sfi import Macro
+    v = "" if value is None else str(value)
+    v = v.replace("\r", " ").replace("\n", " ")
+    Macro.setGlobal(name, v)
 
 
 def _validate_prefix(prefix: str) -> str:
