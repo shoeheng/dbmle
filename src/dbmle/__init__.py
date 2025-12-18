@@ -15,8 +15,6 @@ __all__ = [
 from dbmle.stata_bridge import dbmle_to_r
 __all__.append("dbmle_to_r")
 
-from dbmle.stata_eclass import dbmle_to_eclass
-__all__.append("dbmle_to_eclass")
 
 
 
