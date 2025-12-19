@@ -160,20 +160,21 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     Scalar.setValue(_rname(prefix, "complier_mle"), float(t10))
     Scalar.setValue(_rname(prefix, "defier_mle"), float(t01))
     Scalar.setValue(_rname(prefix, "never_mle"), float(t00))
-
+    
     # All MLEs (ties) as matrix kx4
     k = len(mle_list)
-    Matrix.create(_rname(prefix, "mle_list"), k, 4, MISSING)
+    Matrix.create(_rname(prefix, "mle"), k, 4, MISSING)
     try:
-        Matrix.setColNames(_rname(prefix, "mle_list"), ["always", "complier", "defier", "never"])
+        Matrix.setColNames(_rname(prefix, "mle"), ["always", "complier", "defier", "never"])
     except Exception:
         pass
-
+    
     for i, (a, c_, d, n_) in enumerate(mle_list):
-        Matrix.storeAt(_rname(prefix, "mle_list"), i, 0, float(a))
-        Matrix.storeAt(_rname(prefix, "mle_list"), i, 1, float(c_))
-        Matrix.storeAt(_rname(prefix, "mle_list"), i, 2, float(d))
-        Matrix.storeAt(_rname(prefix, "mle_list"), i, 3, float(n_))
+        Matrix.storeAt(_rname(prefix, "mle"), i, 0, float(a))
+        Matrix.storeAt(_rname(prefix, "mle"), i, 1, float(c_))
+        Matrix.storeAt(_rname(prefix, "mle"), i, 2, float(d))
+        Matrix.storeAt(_rname(prefix, "mle"), i, 3, float(n_))
+
 
     num_mles = len(mle_list)
     Scalar.setValue(_rname(prefix, "num_mles"), float(num_mles))
@@ -229,12 +230,6 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     # Printable report: keep as local (string)
     if "report" in res and isinstance(res["report"], str):
         Macro.setLocal(f"{prefix}report", res["report"])
-
-    if num_mles > 1:
-        print(
-            f"[dbmle] NOTE: {num_mles} tied MLEs detected. "
-            f"See matrix {_rname(prefix, 'mle_list')} for all solutions."
-        )
 
 
 def dbmle_to_r(
