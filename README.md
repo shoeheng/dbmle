@@ -124,8 +124,10 @@ Running the command will print the full formatted table of results and populate 
 
 ### Objects stored in `r()`
 
-After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` return set as matrices.
+After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` class as matrices.
 
+- `r(mle)`, the design-based MLE: an $m\times 4$ matrix where $m$ is the number of MLEs ($m=1$ if the MLE is unique, $m>1$ if there are ties). Each row is a distinct MLE, while columns are the counts of always takers, compliers, defiers, and never takers.
+- `r(always_scs)`, the 95% smallest credible set for always takers: a $k\times 2$ matrix where $k$ is the number continguous intervals the set consists of (for exmaple, if the set is $[0,8]\cup[10,21]$, then $k=2$). Each row is distinct interval while the columns are the lower and upper endpoints of the interval.
 
 
 #### Prefixing
@@ -135,8 +137,6 @@ The `dbmle_to_r` function also supports a `prefix` parameter. For example, if `p
 - `r(sample1_always_mle)`
 - `r(sample1_mle_list)`
 - `r(sample1_always_scs)`
-
-This is useful for cases where you want to loop over multiple experiments but do not want to overwrite previous estimates.
 
 ----------------------------------------------------------------------
 Parameters
@@ -357,6 +357,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
