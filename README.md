@@ -134,9 +134,9 @@ After running `dbmle_to_r` inside Stata, all numerical results are available in 
 
 | Stata object | Description |
 |---|---|
-| `r(n)` | Total sample size |
-| `r(intervention)` | Intervention group size |
-| `r(control)` | Control group size |
+| `r(n)` | Sample size |
+| `r(intervention)` | Intervention size |
+| `r(control)` | Control size |
 | `r(always_mle)` | Always takers MLE |
 | `r(complier_mle)` | Compliers MLE |
 | `r(defier_mle)` | Defiers MLE |
@@ -156,7 +156,6 @@ After running `dbmle_to_r` inside Stata, all numerical results are available in 
 Each interval-valued object is stored as a matrix with **two columns** `[lo, hi]`.  
 - A contiguous interval is a `1 × 2` matrix.  
 - A union of intervals is a `k × 2` matrix (one interval per row).  
-Each has a companion scalar `*_k` giving the number of interval pieces.
 
 | Stata object | Shape | Description |
 |---|---:|---|
@@ -168,47 +167,24 @@ Each has a companion scalar `*_k` giving the number of interval pieces.
 | `r(complier_lps)` | `1 × 2` | Largest possible support for compliers |
 | `r(defier_lps)` | `1 × 2` | Largest possible support for defiers |
 | `r(never_lps)` | `1 × 2` | Largest possible support for never takers |
-| `r(always_frechet)` | `k × 2` | Estimated Fréchet bounds for always takers |
-| `r(complier_frechet)` | `k × 2` | Estimated Fréchet bounds for compliers |
-| `r(defier_frechet)` | `k × 2` | Estimated Fréchet bounds for defiers |
-| `r(never_frechet)` | `k × 2` | Estimated Fréchet bounds for never takers |
+| `r(always_frechet)` | `1 × 2` | Estimated Fréchet bounds for always takers |
+| `r(complier_frechet)` | `1 × 2` | Estimated Fréchet bounds for compliers |
+| `r(defier_frechet)` | `1 × 2` | Estimated Fréchet bounds for defiers |
+| `r(never_frechet)` | `1 × 2` | Estimated Fréchet bounds for never takers |
 | `r(always_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (always takers) |
 | `r(complier_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (compliers) |
 | `r(defier_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (defiers) |
 | `r(never_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (never takers) |
 
-Companion scalars giving the number of rows (interval pieces):
-
-- `r(always_scs_k)`, `r(complier_scs_k)`, `r(defier_scs_k)`, `r(never_scs_k)`
-- `r(always_lps_k)`, `r(complier_lps_k)`, `r(defier_lps_k)`, `r(never_lps_k)`
-- `r(always_frechet_k)`, `r(complier_frechet_k)`, `r(defier_frechet_k)`, `r(never_frechet_k)`
-- `r(always_frechet_scs_k)`, `r(complier_frechet_scs_k)`, `r(defier_frechet_scs_k)`, `r(never_frechet_scs_k)`
-
 #### Prefixing
 
-If you pass `prefix="dbmle_"`, then all objects above are stored with that prefix. For example:
+The `dbmle_to_r` function also supports a `prefix` parameter. For example, if `prefix="sample1_"`, then all objects above are stored with that prefix:
 
-- `r(dbmle_always_mle)`
-- `r(dbmle_mle_list)`
-- `r(dbmle_always_scs)` and `r(dbmle_always_scs_k)`
+- `r(sample1_always_mle)`
+- `r(sample1_mle_list)`
+- `r(sample1_always_scs)`
 
-#### Example: accessing results in Stata
-
-```stata
-python:
-from dbmle import dbmle_to_r
-dbmle_to_r(50, 11, 23, 31)
-end
-
-display r(always_mle)
-matrix list r(mle_list)
-
-matrix list r(always_scs)
-display r(always_scs_k)
-
-display r(always_scs)[1,1]
-display r(always_scs)[1,2]
-```
+This is useful for cases where you want to loop over multiple experiments but do not want to overwrite previous estimates.
 
 ----------------------------------------------------------------------
 Parameters
@@ -265,9 +241,8 @@ or equivalently in Stata,
 
 ```
 python:
-    from dbmle import dbmle
-    res = dbmle(50, 11, 23, 31)
-    print(res.report())
+from dbmle import dbmle_to_r
+res = dbmle_to_r(50, 11, 23, 31)
 end
 ```
 
@@ -322,9 +297,8 @@ or in Stata,
 
 ```
 python:
-    from dbmle import dbmle
-    res = dbmle(50, 11, 23, 31, output="auxiliary")
-    print(res.report())
+from dbmle import dbmle_to_r
+dbmle_to_r(50, 11, 23, 31, output="auxiliary")
 end
 ```
 
@@ -431,6 +405,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
