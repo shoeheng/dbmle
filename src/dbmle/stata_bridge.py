@@ -17,6 +17,15 @@ except Exception:
 MISSING = float("nan")
 
 
+# Map internal theta names -> user-facing Stata names
+THETA_TO_NAME = {
+    "theta11": "always",
+    "theta10": "complier",
+    "theta01": "defier",
+    "theta00": "never",
+}
+
+
 def _require_stata() -> None:
     if Scalar is None or Macro is None or Matrix is None:
         raise RuntimeError(
@@ -79,11 +88,14 @@ def _set_four_interval_mats_from_obj(prefix: str, suffix: str, obj: Dict[str, An
     obj must have keys like:
       theta11_intervals, theta10_intervals, theta01_intervals, theta00_intervals
     Each value is a list of (lo,hi) segments (possibly empty).
+
+    Stored as:
+      r(always_<suffix>), r(complier_<suffix>), r(defier_<suffix>), r(never_<suffix>)
     """
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta11_{suffix}", intervals=obj.get("theta11_intervals"))
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta10_{suffix}", intervals=obj.get("theta10_intervals"))
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta01_{suffix}", intervals=obj.get("theta01_intervals"))
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta00_{suffix}", intervals=obj.get("theta00_intervals"))
+    for theta in ("theta11", "theta10", "theta01", "theta00"):
+        name = THETA_TO_NAME[theta]
+        intervals = obj.get(f"{theta}_intervals")
+        _set_intervals_matrix(prefix=prefix, base_name=f"{name}_{suffix}", intervals=intervals)
 
 
 def _set_four_interval_mats_from_intervals_dict(prefix: str, suffix: str, intervals_dict: Dict[str, Any]) -> None:
@@ -91,11 +103,14 @@ def _set_four_interval_mats_from_intervals_dict(prefix: str, suffix: str, interv
     intervals_dict must have keys:
       theta11, theta10, theta01, theta00
     Each value is a list of (lo,hi) segments (possibly empty).
+
+    Stored as:
+      r(always_<suffix>), r(complier_<suffix>), r(defier_<suffix>), r(never_<suffix>)
     """
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta11_{suffix}", intervals=intervals_dict.get("theta11"))
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta10_{suffix}", intervals=intervals_dict.get("theta10"))
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta01_{suffix}", intervals=intervals_dict.get("theta01"))
-    _set_intervals_matrix(prefix=prefix, base_name=f"theta00_{suffix}", intervals=intervals_dict.get("theta00"))
+    for theta in ("theta11", "theta10", "theta01", "theta00"):
+        name = THETA_TO_NAME[theta]
+        intervals = intervals_dict.get(theta)
+        _set_intervals_matrix(prefix=prefix, base_name=f"{name}_{suffix}", intervals=intervals)
 
 
 def _set_four_simple_interval_mats(prefix: str, suffix: str, bounds: Dict[str, Tuple[Any, Any]]) -> None:
@@ -103,11 +118,13 @@ def _set_four_simple_interval_mats(prefix: str, suffix: str, bounds: Dict[str, T
     bounds must have keys:
       theta11: (lo,hi), theta10: (lo,hi), theta01: (lo,hi), theta00: (lo,hi)
 
-    Stored as 1x2 matrices in r().
+    Stored as 1x2 matrices in r() as:
+      r(always_<suffix>), r(complier_<suffix>), r(defier_<suffix>), r(never_<suffix>)
     """
-    for key in ("theta11", "theta10", "theta01", "theta00"):
-        lo, hi = bounds[key]
-        _set_intervals_matrix(prefix=prefix, base_name=f"{key}_{suffix}", intervals=[(lo, hi)])
+    for theta in ("theta11", "theta10", "theta01", "theta00"):
+        name = THETA_TO_NAME[theta]
+        lo, hi = bounds[theta]
+        _set_intervals_matrix(prefix=prefix, base_name=f"{name}_{suffix}", intervals=[(lo, hi)])
 
 
 def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
@@ -117,7 +134,9 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     - Numeric outputs -> r() scalars / matrices
     - Interval unions -> r() matrices (k x 2), with companion scalar r(<name>_k)
 
-    prefix: optional prefix for names, e.g. prefix="dbmle_" -> r(dbmle_n), etc.
+    Naming conventions:
+      - r(intervention), r(control) instead of r(m), r(c)
+      - always/complier/defier/never instead of theta11/theta10/theta01/theta00
     """
     _require_stata()
 
@@ -132,15 +151,15 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
 
     # ---- scalars always available ----
     Scalar.setValue(_rname(prefix, "n"), float(inp["n"]))
-    Scalar.setValue(_rname(prefix, "m"), float(inp["m"]))
-    Scalar.setValue(_rname(prefix, "c"), float(inp["c"]))
+    Scalar.setValue(_rname(prefix, "intervention"), float(inp["m"]))
+    Scalar.setValue(_rname(prefix, "control"), float(inp["c"]))
 
-    # First MLE as scalars
+    # First MLE as scalars (rename theta** -> always/complier/defier/never)
     t11, t10, t01, t00 = mle_list[0]
-    Scalar.setValue(_rname(prefix, "theta11_mle"), float(t11))
-    Scalar.setValue(_rname(prefix, "theta10_mle"), float(t10))
-    Scalar.setValue(_rname(prefix, "theta01_mle"), float(t01))
-    Scalar.setValue(_rname(prefix, "theta00_mle"), float(t00))
+    Scalar.setValue(_rname(prefix, "always_mle"), float(t11))
+    Scalar.setValue(_rname(prefix, "complier_mle"), float(t10))
+    Scalar.setValue(_rname(prefix, "defier_mle"), float(t01))
+    Scalar.setValue(_rname(prefix, "never_mle"), float(t00))
 
     # All MLEs (ties) as matrix kx4
     k = len(mle_list)
@@ -160,20 +179,16 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     Scalar.setValue(_rname(prefix, "num_mles"), float(num_mles))
 
     # ---- global SCS unions (only in exhaustive modes) ----
-    # Store as r(theta**_scs) matrices (k x 2), not locals.
+    # Store as r(always_scs), r(complier_scs), ... matrices
     if outmode in ("basic", "auxiliary"):
         g = res.get("global_95_scs")
         if isinstance(g, dict):
-            # Preferred: structured intervals dict from core
             if isinstance(g.get("intervals"), dict):
                 _set_four_interval_mats_from_intervals_dict(prefix, "scs", g["intervals"])
             else:
-                # If intervals aren't provided, we can't reliably reconstruct pieces from union strings.
                 # Create "empty" matrices with k=0 so Stata code doesn't break.
-                _set_intervals_matrix(prefix=prefix, base_name="theta11_scs", intervals=None)
-                _set_intervals_matrix(prefix=prefix, base_name="theta10_scs", intervals=None)
-                _set_intervals_matrix(prefix=prefix, base_name="theta01_scs", intervals=None)
-                _set_intervals_matrix(prefix=prefix, base_name="theta00_scs", intervals=None)
+                for name in ("always", "complier", "defier", "never"):
+                    _set_intervals_matrix(prefix=prefix, base_name=f"{name}_scs", intervals=None)
 
     # ---- auxiliary-only exports ----
     if outmode == "auxiliary":
@@ -183,29 +198,22 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         lps = supports.get("largest_possible_support")
         if isinstance(lps, dict) and all(k in lps for k in ("theta11", "theta10", "theta01", "theta00")):
             _set_four_simple_interval_mats(prefix, "lps", lps)
-        else:
-            # ensure presence (optional)
-            pass
 
         # Estimated Fréchet bounds: stored as *_intervals
         efb = supports.get("estimated_frechet_bounds")
         if isinstance(efb, dict):
             _set_four_interval_mats_from_obj(prefix, "frechet", efb)
         else:
-            _set_intervals_matrix(prefix=prefix, base_name="theta11_frechet", intervals=None)
-            _set_intervals_matrix(prefix=prefix, base_name="theta10_frechet", intervals=None)
-            _set_intervals_matrix(prefix=prefix, base_name="theta01_frechet", intervals=None)
-            _set_intervals_matrix(prefix=prefix, base_name="theta00_frechet", intervals=None)
+            for name in ("always", "complier", "defier", "never"):
+                _set_intervals_matrix(prefix=prefix, base_name=f"{name}_frechet", intervals=None)
 
         # 95% SCS within estimated Fréchet set: stored as *_intervals
         fscs = res.get("frechet_95_scs")
         if isinstance(fscs, dict):
             _set_four_interval_mats_from_obj(prefix, "frechet_scs", fscs)
         else:
-            _set_intervals_matrix(prefix=prefix, base_name="theta11_frechet_scs", intervals=None)
-            _set_intervals_matrix(prefix=prefix, base_name="theta10_frechet_scs", intervals=None)
-            _set_intervals_matrix(prefix=prefix, base_name="theta01_frechet_scs", intervals=None)
-            _set_intervals_matrix(prefix=prefix, base_name="theta00_frechet_scs", intervals=None)
+            for name in ("always", "complier", "defier", "never"):
+                _set_intervals_matrix(prefix=prefix, base_name=f"{name}_frechet_scs", intervals=None)
 
         # Optional diagnostics string: keep as local (string)
         diag = res.get("meta", {}).get("diagnostics_str")
@@ -244,15 +252,15 @@ def dbmle_to_r(
     """
     Compute dbmle() and populate Stata outputs.
 
-    - r() scalars: n, m, c, theta??_mle, num_mles
+    - r() scalars: n, intervention, control, always_mle, complier_mle, defier_mle, never_mle, num_mles
     - r() matrix:  mle_list  (k x 4)
 
     Interval unions stored as r() matrices (k x 2) with companion scalar *_k:
-      - r(theta11_scs), r(theta11_scs_k)  (and theta10/theta01/theta00)
+      - r(always_scs), r(always_scs_k)  (and complier/defier/never)
       - auxiliary mode also:
-          r(theta??_lps), r(theta??_lps_k)                 (1x2, k=1)
-          r(theta??_frechet), r(theta??_frechet_k)
-          r(theta??_frechet_scs), r(theta??_frechet_scs_k)
+          r(always_lps), r(always_lps_k)                 (1x2, k=1)
+          r(always_frechet), r(always_frechet_k)
+          r(always_frechet_scs), r(always_frechet_scs_k)
 
     Returns the DBMLEResult iff return_result=True, else None.
     """
@@ -264,11 +272,12 @@ def dbmle_to_r(
     )
 
     set_r_from_result(res, prefix=prefix)
-    
+
+    # Print the nice Python table to Stata Results window
     report = res.get("report")
     if isinstance(report, str) and report.strip():
         print(report)
-        
+
     if return_result:
         return res
     return None
