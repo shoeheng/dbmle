@@ -128,6 +128,7 @@ After running `dbmle_to_r` inside Stata, all numerical results are available in 
 
 - `r(mle)`, the design-based MLE: an $m\times 4$ matrix where $m$ is the number of MLEs ($m=1$ if the MLE is unique, $m>1$ if there are ties). Each row is a distinct MLE, while columns are the counts of always takers, compliers, defiers, and never takers.
 - `r(always_scs)`, the 95% smallest credible set for always takers: a $k\times 2$ matrix where $k$ is the number continguous intervals the set consists of (for exmaple, if the set is $[0,8]\cup[10,21]$, then $k=2$). Each row is distinct interval while the columns are the lower and upper endpoints of the interval.
+- `r(compliers_scs)`, `r(defiers_scs)`, and `r(never_scs)` are the same but for compliers, defiers, and never takers.
 
 
 #### Prefixing
@@ -357,6 +358,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
