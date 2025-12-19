@@ -124,53 +124,9 @@ Running the command will print the full formatted table of results and populate 
 
 ### Objects stored in `r()`
 
-After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` return set as scalars and matrices.
+After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` return set as matrices.
 
-#### Scalars
 
-| Stata object | Description |
-|---|---|
-| `r(n)` | Sample size |
-| `r(intervention)` | Intervention size |
-| `r(control)` | Control size |
-| `r(always_mle)` | Always takers MLE |
-| `r(complier_mle)` | Compliers MLE |
-| `r(defier_mle)` | Defiers MLE |
-| `r(never_mle)` | Never takers MLE |
-| `r(num_mles)` | Number of tied MLE solutions |
-
-#### Matrices
-
-**MLEs**
-
-| Stata object | Shape | Description |
-|---|---:|---|
-| `r(mle_list)` | `k × 4` | All tied MLE solutions (rows). Columns are: always takers, compliers, defiers, never takers. |
-
-**Credible sets and bounds**
-
-Each interval-valued object is stored as a matrix with **two columns** `[lo, hi]`.  
-- A contiguous interval is a `1 × 2` matrix.  
-- A union of intervals is a `k × 2` matrix (one interval per row).  
-
-| Stata object | Shape | Description |
-|---|---:|---|
-| `r(always_scs)` | `k × 2` | 95% smallest credible set for always takers |
-| `r(complier_scs)` | `k × 2` | 95% smallest credible set for compliers |
-| `r(defier_scs)` | `k × 2` | 95% smallest credible set for defiers |
-| `r(never_scs)` | `k × 2` | 95% smallest credible set for never takers |
-| `r(always_lps)` | `1 × 2` | Largest possible support for always takers |
-| `r(complier_lps)` | `1 × 2` | Largest possible support for compliers |
-| `r(defier_lps)` | `1 × 2` | Largest possible support for defiers |
-| `r(never_lps)` | `1 × 2` | Largest possible support for never takers |
-| `r(always_frechet)` | `1 × 2` | Estimated Fréchet bounds for always takers |
-| `r(complier_frechet)` | `1 × 2` | Estimated Fréchet bounds for compliers |
-| `r(defier_frechet)` | `1 × 2` | Estimated Fréchet bounds for defiers |
-| `r(never_frechet)` | `1 × 2` | Estimated Fréchet bounds for never takers |
-| `r(always_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (always takers) |
-| `r(complier_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (compliers) |
-| `r(defier_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (defiers) |
-| `r(never_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (never takers) |
 
 #### Prefixing
 
@@ -401,6 +357,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
