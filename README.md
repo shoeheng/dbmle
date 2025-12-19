@@ -135,12 +135,12 @@ After running `dbmle_to_r` inside Stata, all numerical results are available in 
 | Stata object | Description |
 |---|---|
 | `r(n)` | Total sample size |
-| `r(m)` | Intervention group size |
-| `r(c)` | Control group size |
-| `r(theta11_mle)` | Always takers MLE |
-| `r(theta10_mle)` | Compliers MLE |
-| `r(theta01_mle)` | Defiers MLE |
-| `r(theta00_mle)` | Never takers MLE |
+| `r(intervention)` | Intervention group size |
+| `r(control)` | Control group size |
+| `r(always_mle)` | Always takers MLE |
+| `r(complier_mle)` | Compliers MLE |
+| `r(defier_mle)` | Defiers MLE |
+| `r(never_mle)` | Never takers MLE |
 | `r(num_mles)` | Number of tied MLE solutions |
 
 #### Matrices
@@ -160,54 +160,54 @@ Each has a companion scalar `*_k` giving the number of interval pieces.
 
 | Stata object | Shape | Description |
 |---|---:|---|
-| `r(theta11_scs)` | `k × 2` | 95% smallest credible set for always takers |
-| `r(theta10_scs)` | `k × 2` | 95% smallest credible set for compliers |
-| `r(theta01_scs)` | `k × 2` | 95% smallest credible set for defiers |
-| `r(theta00_scs)` | `k × 2` | 95% smallest credible set for never takers |
-| `r(theta11_lps)` | `1 × 2` | Largest possible support for always takers |
-| `r(theta10_lps)` | `1 × 2` | Largest possible support for compliers |
-| `r(theta01_lps)` | `1 × 2` | Largest possible support for defiers |
-| `r(theta00_lps)` | `1 × 2` | Largest possible support for never takers |
-| `r(theta11_frechet)` | `k × 2` | Estimated Fréchet bounds for always takers |
-| `r(theta10_frechet)` | `k × 2` | Estimated Fréchet bounds for compliers |
-| `r(theta01_frechet)` | `k × 2` | Estimated Fréchet bounds for defiers |
-| `r(theta00_frechet)` | `k × 2` | Estimated Fréchet bounds for never takers |
-| `r(theta11_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (always takers) |
-| `r(theta10_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (compliers) |
-| `r(theta01_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (defiers) |
-| `r(theta00_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (never takers) |
+| `r(always_scs)` | `k × 2` | 95% smallest credible set for always takers |
+| `r(complier_scs)` | `k × 2` | 95% smallest credible set for compliers |
+| `r(defier_scs)` | `k × 2` | 95% smallest credible set for defiers |
+| `r(never_scs)` | `k × 2` | 95% smallest credible set for never takers |
+| `r(always_lps)` | `1 × 2` | Largest possible support for always takers |
+| `r(complier_lps)` | `1 × 2` | Largest possible support for compliers |
+| `r(defier_lps)` | `1 × 2` | Largest possible support for defiers |
+| `r(never_lps)` | `1 × 2` | Largest possible support for never takers |
+| `r(always_frechet)` | `k × 2` | Estimated Fréchet bounds for always takers |
+| `r(complier_frechet)` | `k × 2` | Estimated Fréchet bounds for compliers |
+| `r(defier_frechet)` | `k × 2` | Estimated Fréchet bounds for defiers |
+| `r(never_frechet)` | `k × 2` | Estimated Fréchet bounds for never takers |
+| `r(always_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (always takers) |
+| `r(complier_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (compliers) |
+| `r(defier_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (defiers) |
+| `r(never_frechet_scs)` | `k × 2` | 95% SCS within estimated Fréchet set (never takers) |
 
 Companion scalars giving the number of rows (interval pieces):
 
-- `r(theta11_scs_k)`, `r(theta10_scs_k)`, `r(theta01_scs_k)`, `r(theta00_scs_k)`
-- `r(theta11_lps_k)`, `r(theta10_lps_k)`, `r(theta01_lps_k)`, `r(theta00_lps_k)`
-- `r(theta11_frechet_k)`, `r(theta10_frechet_k)`, `r(theta01_frechet_k)`, `r(theta00_frechet_k)`
-- `r(theta11_frechet_scs_k)`, `r(theta10_frechet_scs_k)`, `r(theta01_frechet_scs_k)`, `r(theta00_frechet_scs_k)`
+- `r(always_scs_k)`, `r(complier_scs_k)`, `r(defier_scs_k)`, `r(never_scs_k)`
+- `r(always_lps_k)`, `r(complier_lps_k)`, `r(defier_lps_k)`, `r(never_lps_k)`
+- `r(always_frechet_k)`, `r(complier_frechet_k)`, `r(defier_frechet_k)`, `r(never_frechet_k)`
+- `r(always_frechet_scs_k)`, `r(complier_frechet_scs_k)`, `r(defier_frechet_scs_k)`, `r(never_frechet_scs_k)`
 
 #### Prefixing
 
 If you pass `prefix="dbmle_"`, then all objects above are stored with that prefix. For example:
 
-- `r(dbmle_theta11_mle)`
+- `r(dbmle_always_mle)`
 - `r(dbmle_mle_list)`
-- `r(dbmle_theta11_scs)` and `r(dbmle_theta11_scs_k)`
+- `r(dbmle_always_scs)` and `r(dbmle_always_scs_k)`
 
 #### Example: accessing results in Stata
 
 ```stata
 python:
 from dbmle import dbmle_to_r
-dbmle_to_r(50, 11, 23, 31, output="auxiliary", level=0.95, show_progress=False)
+dbmle_to_r(50, 11, 23, 31)
 end
 
-display r(theta11_mle)
+display r(always_mle)
 matrix list r(mle_list)
 
-matrix list r(theta11_scs)
-display r(theta11_scs_k)
+matrix list r(always_scs)
+display r(always_scs_k)
 
-display r(theta11_scs)[1,1]
-display r(theta11_scs)[1,2]
+display r(always_scs)[1,1]
+display r(always_scs)[1,2]
 ```
 
 ----------------------------------------------------------------------
@@ -431,6 +431,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
