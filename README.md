@@ -103,21 +103,17 @@ You can also use Python in a Stata script by starting the script with `python:` 
 
 ```
 python:
-    from dbmle import dbmle
-    res = dbmle(50, 11, 23, 31)
-    print(res.report())
+from dbmle import dbmle
+res = dbmle(50, 11, 23, 31)
+print(res.report())
 end
 ```
 
 If you only want to see the results in a simple table, you can end here. 
 
-We have also included a function, `dbmle_to_r`, that stores all results in Stata's `r()` return set for users who wish to work programmatically in Stata. 
+We have also included a function, `dbmle_to_r`, that stores all results in Stata's `r()` return set for users who wish to work programmatically in Stata. Below is a sample script for how to use the `dbmle_to_r` function in Stata:
 
-**Basic usage in Stata**
-
-Below is a sample script for how to use the `dbmle_to_r` function in Stata:
-
-```
+```stata
 python:
 from dbmle import dbmle_to_r
 dbmle_to_r(50, 11, 23, 31)
@@ -405,6 +401,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
