@@ -89,7 +89,13 @@ You should get an output similar to
       architecture         64-bit
       library path         /.../lib64/libpython3.12.so.1.0
 
-that is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater. Once this is done, `dbmle` can be used directly in the command line of Stata by typing a command like 
+that is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater.
+
+You can find more information about using Python in Stata here: https://www.stata.com/python/. 
+
+### 3. Use `dbmle`
+
+Once this is done and `dbmle` is installed, `dbmle` can be used directly in the command line of Stata by typing a command like 
 
     ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
 
@@ -103,7 +109,22 @@ python:
 end
 ```
 
-You can find more information about using Python in Stata here: https://www.stata.com/python/
+If you only want to see the results in a simple table, you can end here. 
+
+We have also included a function, `dbmle_to_r`, that stores all results in Stata's `r()` return set for users who wish to work programmatically in Stata. 
+
+**Basic usage in Stata**
+
+Below is a sample script for how to use the `dbmle_to_r` function in Stata:
+
+```
+python:
+from dbmle import dbmle_to_r
+dbmle_to_r(50, 11, 23, 31)
+end
+```
+
+Running the command will print the full formatted table of results and populate Stata's r() object with all the numerical results for further use.
 
 ----------------------------------------------------------------------
 Parameters
@@ -326,6 +347,7 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
+
 
 
 
