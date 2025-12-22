@@ -62,84 +62,6 @@ Once installed, you can also use dbmle directly in the command line. The first e
     dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 
 
 ----------------------------------------------------------------------
-Using `dbmle` in Stata
-----------------------------------------------------------------------
-
-Below is a guide to using Python within Stata. The first step is installing Python. If you already have Python 3.9 or higher installed, skip this step.
-
-### 1. Install Python
-
-Go to https://www.python.org/downloads/ and download the latest Python installer for your operating system. Run the installer and check the option "Add Python to PATH" after running the installer.
-
-### 2. Open Stata and tell Stata how to use Python
-
-In the Stata command prompt, run
-
-    python query
-
-You should get an output similar to
-
-    Python Settings
-      set python_exec      /path/to/python
-      set python_userpath  
-
-    Python system information
-      initialized          no
-      version              3.12.8
-      architecture         64-bit
-      library path         /.../lib64/libpython3.12.so.1.0
-
-that is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater.
-
-You can find more information about using Python in Stata here: https://www.stata.com/python/. 
-
-### 3. Use `dbmle`
-
-Once this is done and `dbmle` is installed, `dbmle` can be used directly in the command line of Stata by typing a command like 
-
-    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
-
-You can also use Python in a Stata script by starting the script with `python:` and ending with `end`:
-
-```
-python:
-from dbmle import dbmle
-res = dbmle(50, 11, 23, 31)
-print(res.report())
-end
-```
-
-If you only want to see the results in a simple table, you can end here. 
-
-We have also included a function, `dbmle_to_r`, that stores all results in Stata's `r()` return set for users who wish to work programmatically in Stata. Below is a sample script for how to use the `dbmle_to_r` function in Stata:
-
-```stata
-python:
-from dbmle import dbmle_to_r
-dbmle_to_r(50, 11, 23, 31)
-end
-```
-
-Running the command will print the full formatted table of results and populate Stata's r() object with all the numerical results for further use.
-
-### Objects stored in `r()`
-
-After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` class as matrices.
-
-- `r(mle)`, the design-based MLE: an $m\times 4$ matrix where $m$ is the number of MLEs ($m=1$ if the MLE is unique, $m>1$ if there are ties). Each row is a distinct MLE, while columns are the counts of always takers, compliers, defiers, and never takers.
-- `r(always_scs)`, the 95% smallest credible set for always takers: a $k\times 2$ matrix where $k$ is the number continguous intervals the set consists of (for exmaple, if the set is $[0,8]\cup[10,21]$, then $k=2$). Each row is distinct interval while the columns are the lower and upper endpoints of the interval.
-- `r(compliers_scs)`, `r(defiers_scs)`, and `r(never_scs)` are the same but for compliers, defiers, and never takers.
-
-
-#### Prefixing
-
-The `dbmle_to_r` function also supports a `prefix` parameter. For example, if `prefix="sample1_"`, then all objects above are stored with that prefix:
-
-- `r(sample1_always_mle)`
-- `r(sample1_mle_list)`
-- `r(sample1_always_scs)`
-
-----------------------------------------------------------------------
 Parameters
 ----------------------------------------------------------------------
 
@@ -190,16 +112,8 @@ from dbmle import dbmle
 res = dbmle(50, 11, 23, 31)
 print(res.report())
 ```
-or equivalently in Stata,
 
-```
-python:
-from dbmle import dbmle_to_r
-res = dbmle_to_r(50, 11, 23, 31)
-end
-```
-
-and in the command line interface,
+or in the command line interface,
 
 ```
 dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
@@ -246,16 +160,7 @@ res = dbmle(50, 11, 23, 31, output="auxiliary")
 print(res.report())
 ```
 
-or in Stata,
-
-```
-python:
-from dbmle import dbmle_to_r
-dbmle_to_r(50, 11, 23, 31, output="auxiliary")
-end
-```
-
-or in the command line interface
+or in the command line interface,
 
 ```
 dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31 --output auxiliary
@@ -336,6 +241,84 @@ by the dbmle package (Christy, Kowalski, and Zhang 2025)
 ```
 
 ----------------------------------------------------------------------
+Using `dbmle` in Stata
+----------------------------------------------------------------------
+
+Below is a guide to using Python within Stata. The first step is installing Python. If you already have Python 3.9 or higher installed, skip this step.
+
+### 1. Install Python
+
+Go to https://www.python.org/downloads/ and download the latest Python installer for your operating system. Run the installer and check the option "Add Python to PATH" after running the installer.
+
+### 2. Open Stata and tell Stata how to use Python
+
+In the Stata command prompt, run
+
+    python query
+
+You should get an output similar to
+
+    Python Settings
+      set python_exec      /path/to/python
+      set python_userpath  
+
+    Python system information
+      initialized          no
+      version              3.12.8
+      architecture         64-bit
+      library path         /.../lib64/libpython3.12.so.1.0
+
+that is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater.
+
+You can find more information about using Python in Stata here: https://www.stata.com/python/. 
+
+### 3. Use `dbmle`
+
+Once this is done and `dbmle` is installed, `dbmle` can be used directly in the command line of Stata by typing a command like 
+
+    ! dbmle --xI1 50 --xI0 11 --xC1 23 --xC0 31
+
+You can also use Python in a Stata script by starting the script with `python:` and ending with `end`:
+
+```
+python:
+from dbmle import dbmle
+res = dbmle(50, 11, 23, 31)
+print(res.report())
+end
+```
+
+If you only want to see the results in a simple table, you can end here. 
+
+We have also included a function, `dbmle_to_r`, that stores all results in Stata's `r()` return set for users who wish to work programmatically in Stata. Below is a sample script for how to use the `dbmle_to_r` function in Stata:
+
+```stata
+python:
+from dbmle import dbmle_to_r
+dbmle_to_r(50, 11, 23, 31)
+end
+```
+
+Running the command will print the full formatted table of results shown in the Example Usages section and populate Stata's r() object with all the numerical results for further use.
+
+### Objects stored in `r()`
+
+After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` class as matrices.
+
+- `r(mle)`, the design-based MLE: an $m\times 4$ matrix where $m$ is the number of MLEs ($m=1$ if the MLE is unique, $m>1$ if there are ties). Each row is a distinct MLE, while columns are the counts of always takers, compliers, defiers, and never takers.
+- `r(always_scs)`, the 95% smallest credible set for always takers: a $k\times 2$ matrix where $k$ is the number continguous intervals the set consists of (for exmaple, if the set is $[0,8]\cup[10,21]$, then $k=2$). Each row is distinct interval while the columns are the lower and upper endpoints of the interval.
+- `r(compliers_scs)`, `r(defiers_scs)`, and `r(never_scs)` are the same but for compliers, defiers, and never takers.
+
+Note that if `output="approx"` the smallest credible sets are not calculated and therefore are not saved.
+
+#### Prefixing
+
+In addition to the parameters above, the `dbmle_to_r` function also supports a `prefix` parameter. For example, if `prefix="sample1_"`, then all objects above are stored with that prefix:
+
+- `r(sample1_mle)`
+- `r(sample1_compliers_scs)`
+
+----------------------------------------------------------------------
 Project Links
 ----------------------------------------------------------------------
 
@@ -358,28 +341,3 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.2}
 }
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
