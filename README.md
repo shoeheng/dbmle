@@ -338,7 +338,8 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   title        = {dbmle: Design-Based Maximum Likelihood Estimation for Always Takers, Compliers, Defiers, and Never Takers},
   year         = {2025},
   howpublished = {\url{https://pypi.org/project/dbmle/}},
-  note         = {Python package version 0.0.2}
+  note         = {Python package version 0.0.3}
 }
 ```
+
 
