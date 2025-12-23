@@ -1,7 +1,7 @@
 `dbmle`
 ================
 
-This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following [Christy and Kowalski (2025)](https://arxiv.org/abs/2412.16352) "Counting Defiers: A Design-Based Model of an Experiment Can Reveal Evidence Beyond the Average Effect". The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
+This package provides a design-based maximum likelihood estimate of the numbers of always takers, compliers, defiers, and never takers in the sample of people in an experiment, following [Christy and Kowalski (2025)](https://arxiv.org/abs/2412.16352) "Counting Defiers: A Design-Based Model of an Experiment Can Reveal Evidence Beyond the Average Effect." The package is compatible with experiments that use either a Bernoulli randomized design or a completely randomized design, and results are exact in both cases. This package also reports other statistics from Christy and Kowalski (2025), including credible sets. See below for instructions on how to use this package in Stata.   
 
 ----------------------------------------------------------------------
 Installation
@@ -21,10 +21,10 @@ Requirements:
 Usage
 ----------------------------------------------------------------------
 
-The MLE can be calculated from aggregated counts $(x_{I1},x_{I0},x_{C1},x_{C0})$, which are the counts of subjects who take up in intervention $x_{I1}$,
-do not take up in intervention $x_{I0}$,
-take up in control $x_{C1}$,
-and do not take up in control $x_{C0}$.
+The MLE can be calculated from aggregated counts $(x_{I1},x_{I0},x_{C1},x_{C0})$, which are the counts of subjects who take up in intervention ($x_{I1}$),
+do not take up in intervention ($x_{I0}$),
+take up in control ($x_{C1})$,
+and do not take up in control ($x_{C0}$).
 
 ### 1. Within Python 
 
@@ -47,13 +47,13 @@ from dbmle import dbmle_from_ZD
 # D: observed takeup indicator (1 = takeup, 0 = no takeup)
 Z = [1, 1, 1, 0, 0, 0]
 D = [1, 1, 0, 1, 0, 0]
-# Data is equivalent to stylized example in Figure 1 of Christy and Kowalski (2025)
+# Data is equivalent to the stylized example in Figure 1 of Christy and Kowalski (2025)
 
 res = dbmle_from_ZD(Z, D)
 print(res.report())
 ```
 
-Both commands return a DBMLEResult object whose .report() method prints a formatted summary of standard statistics, and MLEs.
+Both commands return a DBMLEResult object whose .report() method prints a formatted summary of standard statistics and MLEs.
 
 ### 2. Command Line Usage
 
@@ -69,7 +69,7 @@ Aside from the data input, each command supports the following parameters:
 
 - **output:** `"basic"`, `"auxiliary"`, _or_ `"approx"`  
   *Default:* `"basic"`  
-What statistics are to be calculated and displayed. `"basic"` performs an exhaustive grid search and returns the MLE(s) along with the smallest credible set. `"auxiliary`" returns the statistics that `"basic"` returns along with the largest possible support, estimated Fréchet bounds, and the smallest credible set conditional on being within the estimated Fréchet set. `"approx"` uses a significantly faster approximation algorithm to calculate the MLE(s) and only returns the MLE(s). All three return a standard statistics table as well.
+What statistics are to be calculated and displayed. `"basic"` performs an exhaustive grid search and returns the MLE(s) along with the smallest credible set. `"auxiliary"` returns the statistics that `"basic"` returns along with the largest possible support, estimated Fréchet bounds, and the smallest credible set conditional on being within the estimated Fréchet set. `"approx"` uses a significantly faster approximation algorithm to calculate the MLE(s) and only returns the MLE(s). All three return a standard statistics table as well.
   
 - **level:** _float_  
   *Default:* `0.95`  
@@ -268,7 +268,7 @@ You should get an output similar to
       architecture         64-bit
       library path         /.../lib64/libpython3.12.so.1.0
 
-that is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater.
+That is, `set python_exec` should have a valid path to Python and `version` should be 3.9 or greater.
 
 You can find more information about using Python in Stata here: https://www.stata.com/python/. 
 
@@ -303,13 +303,13 @@ Running the command will print the full formatted table of results shown in the 
 
 ### Objects stored in `r()`
 
-After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` class as matrices.
+After running `dbmle_to_r` inside Stata, all numerical results are available in Stata’s `r()` return set as matrices.
 
 - `r(mle)`, the design-based MLE: an $m\times 4$ matrix where $m$ is the number of MLEs ($m=1$ if the MLE is unique, $m>1$ if there are ties). Each row is a distinct MLE, while columns are the counts of always takers, compliers, defiers, and never takers, in that order
-- `r(always_scs)`, the 95% smallest credible set for always takers: a $k\times 2$ matrix where $k$ is the number continguous intervals the set consists of (for exmaple, if the set is $[0,8]\cup[10,21]$, then $k=2$). Each row is distinct interval while the columns are the lower and upper endpoints of the interval.
+- `r(always_scs)`, the 95% smallest credible set for always takers: a $k\times 2$ matrix where $k$ is the number contiguous intervals the set consists of (for example, if the set is $[0,8]\cup[10,21]$, then $k=2$). Each row is a distinct interval while the columns are the lower and upper endpoints of the interval.
 - `r(compliers_scs)`, `r(defiers_scs)`, and `r(never_scs)` are the same but for compliers, defiers, and never takers.
 
-Note that if `output="approx"` the smallest credible sets are not calculated and therefore are not saved.
+Note that if `output="approx",` the smallest credible sets are not calculated and therefore are not saved.
 
 #### Prefixing
 
@@ -341,5 +341,6 @@ If you use `dbmle` in your academic work, please cite Christy and Kowalski (2025
   note         = {Python package version 0.0.3}
 }
 ```
+
 
 
