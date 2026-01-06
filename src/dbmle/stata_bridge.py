@@ -17,7 +17,6 @@ except Exception:
 MISSING = float("nan")
 
 
-# Map internal theta names -> user-facing Stata names
 THETA_TO_NAME = {
     "theta11": "always",
     "theta10": "complier",
@@ -35,12 +34,10 @@ def _require_stata() -> None:
 
 
 def _rname(prefix: str, name: str) -> str:
-    """Return-name helper for Stata r() objects."""
     return f"r({prefix}{name})"
 
 
 def _safe_int(x: Any) -> int:
-    """Best-effort conversion to Python int (handles numpy ints)."""
     return int(x)
 
 
@@ -51,16 +48,6 @@ def _set_intervals_matrix(
     intervals: Optional[List[Tuple[Any, Any]]],
     store_k: bool = True,
 ) -> None:
-    """
-    Store a union of integer intervals as an r() matrix with 2 columns [lo hi].
-
-      intervals = [(lo,hi), (lo,hi), ...] -> r(<prefix><base_name>) is k x 2
-      also store r(<prefix><base_name>_k) = k (number of pieces)
-
-    If intervals is empty/None:
-      create a 1x2 matrix filled with missing and set _k = 0
-      (avoids 0-row matrix quirks in some Stata contexts)
-    """
     _require_stata()
 
     mat = _rname(prefix, base_name)
@@ -84,14 +71,6 @@ def _set_intervals_matrix(
 
 
 def _set_four_interval_mats_from_obj(prefix: str, suffix: str, obj: Dict[str, Any]) -> None:
-    """
-    obj must have keys like:
-      theta11_intervals, theta10_intervals, theta01_intervals, theta00_intervals
-    Each value is a list of (lo,hi) segments (possibly empty).
-
-    Stored as:
-      r(always_<suffix>), r(complier_<suffix>), r(defier_<suffix>), r(never_<suffix>)
-    """
     for theta in ("theta11", "theta10", "theta01", "theta00"):
         name = THETA_TO_NAME[theta]
         intervals = obj.get(f"{theta}_intervals")
@@ -99,14 +78,6 @@ def _set_four_interval_mats_from_obj(prefix: str, suffix: str, obj: Dict[str, An
 
 
 def _set_four_interval_mats_from_intervals_dict(prefix: str, suffix: str, intervals_dict: Dict[str, Any]) -> None:
-    """
-    intervals_dict must have keys:
-      theta11, theta10, theta01, theta00
-    Each value is a list of (lo,hi) segments (possibly empty).
-
-    Stored as:
-      r(always_<suffix>), r(complier_<suffix>), r(defier_<suffix>), r(never_<suffix>)
-    """
     for theta in ("theta11", "theta10", "theta01", "theta00"):
         name = THETA_TO_NAME[theta]
         intervals = intervals_dict.get(theta)
@@ -114,13 +85,6 @@ def _set_four_interval_mats_from_intervals_dict(prefix: str, suffix: str, interv
 
 
 def _set_four_simple_interval_mats(prefix: str, suffix: str, bounds: Dict[str, Tuple[Any, Any]]) -> None:
-    """
-    bounds must have keys:
-      theta11: (lo,hi), theta10: (lo,hi), theta01: (lo,hi), theta00: (lo,hi)
-
-    Stored as 1x2 matrices in r() as:
-      r(always_<suffix>), r(complier_<suffix>), r(defier_<suffix>), r(never_<suffix>)
-    """
     for theta in ("theta11", "theta10", "theta01", "theta00"):
         name = THETA_TO_NAME[theta]
         lo, hi = bounds[theta]
@@ -128,19 +92,8 @@ def _set_four_simple_interval_mats(prefix: str, suffix: str, bounds: Dict[str, T
 
 
 def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
-    """
-    Write results into Stata r().
-
-    - Numeric outputs -> r() scalars / matrices
-    - Interval unions -> r() matrices (k x 2), with companion scalar r(<name>_k)
-
-    Naming conventions:
-      - r(intervention), r(control) instead of r(m), r(c)
-      - always/complier/defier/never instead of theta11/theta10/theta01/theta00
-    """
     _require_stata()
 
-    # ---- required structure ----
     inp = res["summary"]["inputs"]  # expects n,m,c
     outmode = res["meta"]["output"]
 
@@ -149,19 +102,16 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     if not mle_list:
         raise RuntimeError("Result missing mle.mle_list; cannot populate r(mle_list).")
 
-    # ---- scalars always available ----
     Scalar.setValue(_rname(prefix, "n"), float(inp["n"]))
     Scalar.setValue(_rname(prefix, "intervention"), float(inp["m"]))
     Scalar.setValue(_rname(prefix, "control"), float(inp["c"]))
 
-    # First MLE as scalars (rename theta** -> always/complier/defier/never)
     t11, t10, t01, t00 = mle_list[0]
     Scalar.setValue(_rname(prefix, "always_mle"), float(t11))
     Scalar.setValue(_rname(prefix, "complier_mle"), float(t10))
     Scalar.setValue(_rname(prefix, "defier_mle"), float(t01))
     Scalar.setValue(_rname(prefix, "never_mle"), float(t00))
-    
-    # All MLEs (ties) as matrix kx4
+
     k = len(mle_list)
     Matrix.create(_rname(prefix, "mle"), k, 4, MISSING)
     try:
@@ -179,7 +129,6 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     num_mles = len(mle_list)
     Scalar.setValue(_rname(prefix, "num_mles"), float(num_mles))
 
-    # ---- global SCS unions (only in exhaustive modes) ----
     # Store as r(always_scs), r(complier_scs), ... matrices
     if outmode in ("basic", "auxiliary"):
         g = res.get("global_95_scs")
@@ -191,7 +140,6 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
                 for name in ("always", "complier", "defier", "never"):
                     _set_intervals_matrix(prefix=prefix, base_name=f"{name}_scs", intervals=None)
 
-    # ---- auxiliary-only exports ----
     if outmode == "auxiliary":
         supports = res.get("supports", {})
 
@@ -221,7 +169,7 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         if isinstance(diag, str):
             Macro.setLocal(f"{prefix}diagnostics", diag)
 
-    # ---- approx-mode exports (best-effort) ----
+    # ---- approx-mode exports ----
     if outmode == "approx":
         approx_meta = res.get("meta", {}).get("approx")
         if isinstance(approx_meta, str):
@@ -246,18 +194,6 @@ def dbmle_to_r(
 ) -> Optional[DBMLEResult]:
     """
     Compute dbmle() and populate Stata outputs.
-
-    - r() scalars: n, intervention, control, always_mle, complier_mle, defier_mle, never_mle, num_mles
-    - r() matrix:  mle_list  (k x 4)
-
-    Interval unions stored as r() matrices (k x 2) with companion scalar *_k:
-      - r(always_scs), r(always_scs_k)  (and complier/defier/never)
-      - auxiliary mode also:
-          r(always_lps), r(always_lps_k)                 (1x2, k=1)
-          r(always_frechet), r(always_frechet_k)
-          r(always_frechet_scs), r(always_frechet_scs_k)
-
-    Returns the DBMLEResult iff return_result=True, else None.
     """
     res = core.dbmle(
         xI1, xI0, xC1, xC0,
@@ -268,7 +204,6 @@ def dbmle_to_r(
 
     set_r_from_result(res, prefix=prefix)
 
-    # Print the nice Python table to Stata Results window
     report = res.get("report")
     if isinstance(report, str) and report.strip():
         print(report)
