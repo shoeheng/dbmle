@@ -122,8 +122,7 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
         pass
     
     try:
-        # Column labels: sol1, sol2, ..., solk
-        Matrix.setColNames(_rname(prefix, "mle"), [f"sol{i+1}" for i in range(k)])
+        Matrix.setColNames(_rname(prefix, "mle"), [f"{i+1}" for i in range(k)])
     except Exception:
         pass
     
@@ -195,7 +194,7 @@ def dbmle_to_r(
     *,
     output: str = "basic",
     level: float = 0.95,
-    show_progress: bool = True,
+    show_progress: bool = False,
     prefix: str = "",
     return_result: bool = False,
 ) -> Optional[DBMLEResult]:
