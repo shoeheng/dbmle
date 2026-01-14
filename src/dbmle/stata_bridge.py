@@ -113,18 +113,25 @@ def set_r_from_result(res: Dict[str, Any], *, prefix: str = "") -> None:
     Scalar.setValue(_rname(prefix, "never_mle"), float(t00))
 
     k = len(mle_list)
-    Matrix.create(_rname(prefix, "mle"), k, 4, MISSING)
+    
+    Matrix.create(_rname(prefix, "mle"), 4, k, MISSING)
+    
     try:
-        Matrix.setColNames(_rname(prefix, "mle"), ["always", "complier", "defier", "never"])
+        Matrix.setRowNames(_rname(prefix, "mle"), ["always", "complier", "defier", "never"])
     except Exception:
         pass
     
-    for i, (a, c_, d, n_) in enumerate(mle_list):
-        Matrix.storeAt(_rname(prefix, "mle"), i, 0, float(a))
-        Matrix.storeAt(_rname(prefix, "mle"), i, 1, float(c_))
-        Matrix.storeAt(_rname(prefix, "mle"), i, 2, float(d))
-        Matrix.storeAt(_rname(prefix, "mle"), i, 3, float(n_))
-
+    try:
+        # Column labels: sol1, sol2, ..., solk
+        Matrix.setColNames(_rname(prefix, "mle"), [f"sol{i+1}" for i in range(k)])
+    except Exception:
+        pass
+    
+    for j, (a, c_, d, n_) in enumerate(mle_list):  # j = 0..k-1
+        Matrix.storeAt(_rname(prefix, "mle"), 0, j, float(a))   # always
+        Matrix.storeAt(_rname(prefix, "mle"), 1, j, float(c_))  # complier
+        Matrix.storeAt(_rname(prefix, "mle"), 2, j, float(d))   # defier
+        Matrix.storeAt(_rname(prefix, "mle"), 3, j, float(n_))  # never
 
     num_mles = len(mle_list)
     Scalar.setValue(_rname(prefix, "num_mles"), float(num_mles))
