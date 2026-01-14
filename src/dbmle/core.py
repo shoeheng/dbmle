@@ -4,7 +4,7 @@ import math
 import warnings
 from typing import Dict, Tuple, List, Any, Optional
 from tqdm import tqdm
-from scipy.stats import norm   # <-- ADD THIS
+from scipy.stats import norm  
 
 
 # A "theta" here is the joint count of (always, complier, defier, never)
@@ -306,7 +306,17 @@ def _frechet_marginal_scs(
         if cum >= level:
             break
 
-    cred = sorted_thetas[: cut + 1]
+    # include all ties at the cutoff posterior mass
+    tie_tol = 1e-15
+    p_cut = sorted_post[cut]
+
+    j = cut
+    while j + 1 < len(sorted_post) and abs(sorted_post[j + 1] - p_cut) <= tie_tol:
+        j += 1
+        cum += sorted_post[j]
+
+    cred = sorted_thetas[: j + 1]
+
 
     vals11 = sorted({t[0] for t in cred})
     vals10 = sorted({t[1] for t in cred})
@@ -613,8 +623,18 @@ def _exhaustive_grid(
         if cum >= level:
             break
 
-    credible_thetas = sorted_thetas[: cutoff_idx + 1]
-    credible_post = sorted_post[: cutoff_idx + 1]
+    # include all ties at the cutoff posterior mass
+    tie_tol = 1e-15
+    p_cut = sorted_post[cutoff_idx]
+
+    j = cutoff_idx
+    while j + 1 < len(sorted_post) and abs(sorted_post[j + 1] - p_cut) <= tie_tol:
+        j += 1
+        cum += sorted_post[j]
+
+    credible_thetas = sorted_thetas[: j + 1]
+    credible_post = sorted_post[: j + 1]
+
 
     vals11 = sorted({t[0] for t in credible_thetas})
     vals10 = sorted({t[1] for t in credible_thetas})
@@ -1602,5 +1622,4 @@ def dbmle_from_ZD(
     meta = result.setdefault("meta", {})
     meta["from_ZD"] = stats
     return result
-
 
